@@ -1,0 +1,46 @@
+{
+    "appId": "com.rlstudio.kitchen-billing",
+    "productName": "Kitchen Billing Billiard",
+    "files": [
+        "dist-electron/**", 
+        "dist-react/**", 
+        ".env", 
+        "node_modules/**/*"
+    ],
+    "asar": false,
+    "publish": {
+      "provider": "generic",
+      "url": "https://updatecozypool.rlstudio.my.id/kitchen"
+    },
+    "extraResources": [
+      {
+        "from": "node_modules/.prisma/client",
+        "to": "app/node_modules/.prisma/client"
+      }
+    ],
+    "directories": {
+        "output": "release"
+    },
+    "icon": "icon-desktop@512.png",
+    "win": {
+        "target": ["nsis"],
+        "artifactName": "${productName}-${version}.${ext}",
+        "publisherName": "RL Studio",
+        "icon": "icon-desktop@512.png",
+        "signtoolOptions": {
+            "publisherName": "Kitchen Billing Billiard"
+        }
+    },
+    "nsis": {
+        "oneClick": false,
+        "allowToChangeInstallationDirectory": true,
+        "createDesktopShortcut": true,
+        "createStartMenuShortcut": true
+    },
+    "portable": {
+        "artifactName": "${productName}-Portable-${version}.${ext}"
+    },
+    "extraMetadata": {
+        "main": "dist-electron/main.js"
+    }
+}
