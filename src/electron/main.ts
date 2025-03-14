@@ -7,6 +7,8 @@ import path from "path";
 import { WebSocketServer } from "ws";
 import http from "http";
 import { getLocalIPAddress } from "./module/networks.js";
+import { KitchenOrderType, WebsocketKitchenType } from "./types/index.js";
+import StrukWindow from "./module/struk.js";
 
 log.initialize();
 
@@ -45,7 +47,25 @@ app.on("ready", async () => {
     console.log("New WebSocket connection");
 
     ws.on("message", (message) => {
-      console.log("Received:", message);
+      const data = message.toString();
+      console.log("Received:", data);
+
+      try {
+        const json = JSON.parse(data);
+
+        if (json.type === "kitchen") {
+          const data_kitchen: WebsocketKitchenType<KitchenOrderType> = json;
+
+          StrukWindow(data_kitchen.data);
+
+          if (mainWindow) {
+            mainWindow.webContents.send("on_message_receive", data);
+          }
+        }
+      } catch (err) {
+        console.log("Received non-JSON message:", data, err);
+      }
+
       ws.send("Message received");
     });
 
