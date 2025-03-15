@@ -1,29 +1,25 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { getPreloadPath, getUIPath } from "./pathResolver.js";
 import { isDev } from "./utils.js";
-import dotenv from "dotenv";
 import log from "electron-log";
-import path from "path";
 import { WebSocketServer } from "ws";
 import http from "http";
 import { getLocalIPAddress } from "./module/networks.js";
 import { KitchenOrderType, WebsocketKitchenType } from "./types/index.js";
 import StrukWindow from "./module/struk.js";
+import { prisma } from "./database.js";
+import Responses from "./lib/responses.js";
 
 log.initialize();
 
 log.info("App starting...");
 
-dotenv.config();
-process.env.DATABASE_URL = `file:${path.join(
-  app.getPath("userData"),
-  "kitchen.sqlite",
-)}`;
-
 let mainWindow: BrowserWindow | null = null;
 const port = 4321;
 const server = http.createServer();
 const wss = new WebSocketServer({ server });
+
+const connectedClients: Set<string> = new Set();
 
 app.on("ready", async () => {
   mainWindow = new BrowserWindow({
@@ -43,10 +39,14 @@ app.on("ready", async () => {
     mainWindow.loadFile(getUIPath());
   }
 
-  wss.on("connection", (ws) => {
-    console.log("New WebSocket connection");
+  wss.on("connection", (ws, req) => {
+    const clientIP = req.socket.remoteAddress || "Unknown IP";
+    connectedClients.add(clientIP);
 
-    ws.on("message", (message) => {
+    console.log(`New WebSocket connection from: ${clientIP}`);
+    sendClientListToRenderer();
+
+    ws.on("message", async (message) => {
       const data = message.toString();
       console.log("Received:", data);
 
@@ -56,7 +56,67 @@ app.on("ready", async () => {
         if (json.type === "kitchen") {
           const data_kitchen: WebsocketKitchenType<KitchenOrderType> = json;
 
-          StrukWindow(data_kitchen.data);
+          const menuCafeData = await Promise.all(
+            data_kitchen.data.order.map(async (el) => {
+              return await prisma.menuCafe.create({
+                data: {
+                  name: el.menucafe.name,
+                  price: el.menucafe.price,
+                  price_modal: el.menucafe.price_modal,
+                  price_profit: el.menucafe.price_profit,
+                },
+              });
+            }),
+          );
+
+          const cafe_data = data_kitchen.data.order.map((el, index) => {
+            return {
+              id_order_cafe: el.id_order_cafe,
+              name: el.name,
+              subtotal: el.subtotal,
+              qty: el.qty,
+              total: el.total,
+              cash: el.cash,
+              change: el.change,
+              status: el.status,
+              shift: el.shift,
+              menucafe: { connect: { id: menuCafeData[index].id } },
+            };
+          });
+
+          const item_order_data = data_kitchen.data.item.map((el) => {
+            return {
+              id_order_cafe_item: el.id_order_cafe_item,
+              name_menu: el.name_menu,
+              qty: el.qty,
+            };
+          });
+
+          const kitchen = await prisma.kitchenData.create({
+            data: {
+              order_type: data_kitchen.data.order_type,
+              ip: data_kitchen.ip,
+              name_cashier: data_kitchen.name,
+              order: {
+                create: cafe_data,
+              },
+              item: {
+                create: item_order_data,
+              },
+            },
+            include: {
+              order: {
+                include: {
+                  menucafe: true,
+                },
+              },
+              item: true,
+            },
+          });
+
+          console.log("kitchen", JSON.stringify(kitchen));
+
+          StrukWindow(kitchen as unknown as KitchenOrderType);
 
           if (mainWindow) {
             mainWindow.webContents.send("on_message_receive", data);
@@ -70,7 +130,9 @@ app.on("ready", async () => {
     });
 
     ws.on("close", () => {
-      console.log("Client disconnected");
+      connectedClients.delete(clientIP);
+      console.log(`Client ${clientIP} disconnected`);
+      sendClientListToRenderer();
     });
   });
 
@@ -80,4 +142,96 @@ app.on("ready", async () => {
       `WebSocket server running on ws://${getLocalIPAddress()}:${port}`,
     );
   });
+});
+
+ipcMain.handle("get_local_network", async () => {
+  return getLocalIPAddress();
+});
+
+function sendClientListToRenderer() {
+  if (mainWindow) {
+    mainWindow.webContents.send(
+      "update_client_list",
+      Array.from(connectedClients),
+    );
+  }
+}
+
+ipcMain.handle("get_printer", async (_, id: number | null) => {
+  const printers = await mainWindow?.webContents.getPrintersAsync();
+
+  const settings = await prisma.settings.findFirst({
+    where: {
+      id: id || undefined,
+    },
+  });
+
+  return Responses({
+    code: 200,
+    data: {
+      printers,
+      settings,
+    },
+  });
+});
+
+ipcMain.handle(
+  "save_printer",
+  async (_, id: string | null, label_settings: string, content: string) => {
+    try {
+      const check_id = await prisma.settings.findFirst({
+        where: {
+          id_settings: id || undefined,
+        },
+      });
+
+      let res;
+
+      if (check_id) {
+        res = await prisma.settings.update({
+          where: { id_settings: check_id?.id_settings },
+          data: {
+            id_settings: "PRINTER",
+            label_settings: label_settings,
+            content: content,
+          },
+        });
+      } else {
+        res = await prisma.settings.create({
+          data: {
+            id_settings: "PRINTER",
+            label_settings: label_settings,
+            content: content,
+            url: "",
+          },
+        });
+      }
+
+      return Responses({
+        code: 200,
+        data: res,
+        detail_message: "Printer berhasil disimpan atau diperbarui",
+      });
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        return Responses({
+          code: 500,
+          detail_message: `Gagal mengupdate data: ${err.message}`,
+        });
+      }
+      return Responses({ code: 500, detail_message: "Gagal mengupdate data" });
+    }
+  },
+);
+
+ipcMain.handle("confirm", async (_, title: string = "Apakah anda yakin?") => {
+  const result = await dialog.showMessageBox(mainWindow!, {
+    type: "question",
+    buttons: ["Cancel", "OK"],
+    defaultId: 1,
+    title: "Konfirmasi",
+    message: title,
+  });
+
+  return (result as unknown as Electron.MessageBoxReturnValue).response === 1;
 });

@@ -9,3 +9,64 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Settings {
+  id             Int   @id @default(autoincrement())
+  id_settings    String @unique
+  label_settings String
+  url            String?
+  content        String?
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+}
+
+model MenuCafe {
+  id Int   @id @default(autoincrement())
+  name String
+  price Int
+  price_modal Int
+  price_profit Int
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  ordercafe         OrderCafe[]
+}
+
+model KitchenData {
+  id Int   @id @default(autoincrement())
+  order_type String
+  ip String
+  name_cashier String
+  order OrderCafe[]
+  item ItemOrder[]
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+}
+
+model OrderCafe {
+  id Int   @id @default(autoincrement())
+  id_order_cafe String
+  menu_cafe   Int
+  menucafe    MenuCafe             @relation(fields: [menu_cafe], references: [id], onDelete: Cascade)
+  name String
+  subtotal Int
+  qty Int
+  total Int
+  cash Int
+  change Int
+  status String
+  shift String
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  kitchenDataId   Int
+  kitchenData     KitchenData   @relation(fields: [kitchenDataId], references: [id], onDelete: Cascade)
+}
+
+model ItemOrder {
+  id Int   @id @default(autoincrement())
+  id_order_cafe_item String
+  name_menu String
+  qty Int
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  kitchenDataId    Int
+  kitchenData      KitchenData  @relation(fields: [kitchenDataId], references: [id], onDelete: Cascade)
+}

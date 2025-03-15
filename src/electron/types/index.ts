@@ -2,6 +2,7 @@ export interface WebsocketKitchenType<T> {
   type: "kitchen";
   ip: string;
   data: T;
+  name: string;
 }
 
 export interface MenuCafeType {
@@ -9,7 +10,7 @@ export interface MenuCafeType {
   name: string;
   price: number;
   categoryMenuId?: number;
-  price_sell: number;
+  price_profit: number;
   price_modal: number;
   created_at: Date;
   updated_at: Date;
@@ -40,6 +41,7 @@ export interface OrderCafeType {
 }
 
 export type GroupedCafeItem = {
+  id_order_cafe_item: string;
   orderId: number;
   menu_cafe: number;
   price: number;
@@ -52,4 +54,22 @@ export interface KitchenOrderType {
   order_type: "CAFE" | "TABLE";
   order: OrderCafeType[];
   item: GroupedCafeItem[];
+}
+
+export interface IPrinters {
+  description: string;
+  displayName: string;
+  name: string;
+  isDefault: boolean;
+  status: number;
+}
+
+export interface Settings {
+  id: number;
+  id_settings: string;
+  label_settings: string;
+  url: string;
+  content?: string;
+  created_at: Date;
+  updated_at: Date;
 }

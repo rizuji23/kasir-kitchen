@@ -12,4 +12,12 @@ contextBridge.exposeInMainWorld("api", {
   removePrintStruk: () => {
     ipcRenderer.removeAllListeners("print_struk");
   },
+  get_local_network: () => ipcRenderer.invoke("get_local_network"),
+  receive: (channel: string, callback: (data: any) => void) => {
+    ipcRenderer.on(channel, (_: any, data: any) => callback(data));
+  },
+  get_printer: () => ipcRenderer.invoke("get_printer"),
+  save_printer: (id: string | null, label_settings: string, content: string) =>
+    ipcRenderer.invoke("save_printer", id, label_settings, content),
+  confirm: (title?: string) => ipcRenderer.invoke("confirm", title),
 });

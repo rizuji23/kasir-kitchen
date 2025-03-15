@@ -1,3 +1,6 @@
+import clsx, { ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+
 export function convertRupiah(integer: string | null): string {
   if (integer === null || isNaN(Number(integer.replace(/\./g, "")))) {
     return "0";
@@ -20,4 +23,8 @@ export function convertRupiah(integer: string | null): string {
   rupiah += split[1] !== undefined ? "," + split[1] : "";
 
   return rupiah;
+}
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
 }
