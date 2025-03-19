@@ -1,10 +1,6 @@
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
-import dotenv from "dotenv";
 import log from "electron-log";
-
-// Load environment variables
-dotenv.config();
 
 // Initialize Prisma Client
 const prisma = new PrismaClient();

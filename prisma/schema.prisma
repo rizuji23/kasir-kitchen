@@ -37,6 +37,8 @@ model KitchenData {
   name_cashier String
   order OrderCafe[]
   item ItemOrder[]
+  no_billiard String @default("-")
+  no_meja String @default("-")
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 }

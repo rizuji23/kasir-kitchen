@@ -54,6 +54,10 @@ export interface KitchenOrderType {
   order_type: "CAFE" | "TABLE";
   order: OrderCafeType[];
   item: GroupedCafeItem[];
+  created_at: Date;
+  name_cashier: string;
+  no_billiard: string;
+  no_meja: string;
 }
 
 export interface IPrinters {

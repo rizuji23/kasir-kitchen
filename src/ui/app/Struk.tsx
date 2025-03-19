@@ -3,7 +3,7 @@ import { KitchenOrderType } from "../../electron/types";
 import moment from "moment";
 
 function StripDivider() {
-    return <p className="text-xs !font-black">------------------------------</p>
+    return <p className="text-xs !font-black">--------------------------------</p>
 }
 
 export default function StrukPage() {
@@ -23,9 +23,10 @@ export default function StrukPage() {
     return (
         <>
             {
-                struk ? <div className="w-[219px] !font-mono !font-black">
+                struk ? <div className="w-[219px] !font-mono !font-black my-2">
                     <div>
                         <h3 className="text-lg text-center font-bold">KITCHEN ORDER</h3>
+                        <p className="text-center">({struk.order_type === "TABLE" ? "Meja Billiard" : "Cafe"})</p>
                     </div>
                     <StripDivider />
                     <div className="text-xs !font-black grid gap-1 px-2">
@@ -41,6 +42,20 @@ export default function StrukPage() {
                             <p>Nama Kustomer:</p>
                             <p className="text-end">{struk.order[0].name}</p>
                         </div>
+                        <div className="flex justify-between">
+                            <p>Kasir:</p>
+                            <p className="text-end">{struk.name_cashier}</p>
+                        </div>
+                        {
+                            struk.order_type === "TABLE" ? <div className="flex justify-between">
+                                <p>Nomor Billiard:</p>
+                                <p className="text-end">{struk.no_billiard}</p>
+                            </div> : <div className="flex justify-between">
+                                <p>Nomor Meja:</p>
+                                <p className="text-end">{struk.no_meja}</p>
+                            </div>
+                        }
+
                     </div>
                     <StripDivider />
                     <p className="text-sm !font-black text-center">*Menu Item*</p>

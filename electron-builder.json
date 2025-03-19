@@ -4,8 +4,13 @@
     "files": [
         "dist-electron/**", 
         "dist-react/**", 
+        "prisma/**",
         ".env", 
-        "node_modules/**/*"
+        "node_modules/**/*",
+        "!node_modules/.prisma/client/*.node",
+        "!node_modules/.prisma/client/libquery_engine-*",
+        "node_modules/.prisma/client/query-engine-*",
+        "node_modules/.prisma/client/schema.prisma"
     ],
     "asar": false,
     "publish": {

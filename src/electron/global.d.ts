@@ -1,11 +1,33 @@
 import { IResponses } from "./lib/responses.ts";
+import { KitchenOrderType } from "./types/index.ts";
+
+interface UpdateAPI {
+  checkForUpdates: () => void;
+  downloadUpdate: () => void;
+  quitAndInstall: () => void;
+  onUpdateAvailable: (
+    callback: (info: { version: string; releaseNotes: string }) => void,
+  ) => void;
+  onUpdateNotAvailable: (callback: () => void) => void;
+  onUpdateDownloaded: (callback: () => void) => void;
+  onUpdateError: (callback: (error: Error) => void) => void;
+  onDownloadProgress: (
+    callback: (progress: {
+      percent: number;
+      bytesPerSecond: number;
+      transferred: number;
+      total: number;
+    }) => void,
+  ) => void;
+  get_version: () => string;
+}
 
 interface ApiAPI {
   onMessageChange: (callback: (data: string) => void) => void;
   onPrintStruk: (callback: (data: Struk) => void) => void;
   removePrintStruk: () => void;
-  get_local_network: () => Promise<string | null>;
-  receive: (channel: string, callback: (data: string) => void) => void;
+  get_local_network: () => string | null;
+  receive: (channel: string, callback: (data: string[]) => void) => void;
   get_printer: () => Promise<IResponses<unknown>>;
   save_printer: (
     id: string | null,
@@ -13,10 +35,18 @@ interface ApiAPI {
     content: string,
   ) => Promise<IResponses<unknown>>;
   confirm: (title?: string) => Promise<boolean>;
+  history_list: () => Promise<
+    IResponses<{
+      all: KitchenOrderType[];
+      one_minute: KitchenOrderType[];
+    }>
+  >;
+  print_struk: (data: KitchenOrderType) => void;
 }
 
 declare global {
   interface Window {
     api: ApiAPI;
+    update: UpdateAPI;
   }
 }

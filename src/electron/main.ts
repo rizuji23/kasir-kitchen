@@ -9,6 +9,7 @@ import { KitchenOrderType, WebsocketKitchenType } from "./types/index.js";
 import StrukWindow from "./module/struk.js";
 import { prisma } from "./database.js";
 import Responses from "./lib/responses.js";
+import { setupAutoUpdater } from "./module/updater.js";
 
 log.initialize();
 
@@ -103,6 +104,8 @@ app.on("ready", async () => {
               item: {
                 create: item_order_data,
               },
+              no_billiard: data_kitchen.data.no_billiard,
+              no_meja: data_kitchen.data.no_meja,
             },
             include: {
               order: {
@@ -142,6 +145,8 @@ app.on("ready", async () => {
       `WebSocket server running on ws://${getLocalIPAddress()}:${port}`,
     );
   });
+
+  setupAutoUpdater(mainWindow);
 });
 
 ipcMain.handle("get_local_network", async () => {
@@ -223,6 +228,75 @@ ipcMain.handle(
     }
   },
 );
+
+ipcMain.handle("history_list", async () => {
+  try {
+    const oneMinuteAgo = new Date(Date.now() - 60000);
+    const all = await prisma.kitchenData.findMany({
+      include: {
+        order: {
+          include: {
+            menucafe: true,
+          },
+        },
+        item: true,
+      },
+      orderBy: {
+        created_at: "desc",
+      },
+    });
+
+    const one_minute = await prisma.kitchenData.findMany({
+      where: {
+        created_at: {
+          gte: oneMinuteAgo,
+        },
+      },
+      include: {
+        order: {
+          include: {
+            menucafe: true,
+          },
+        },
+        item: true,
+      },
+      orderBy: {
+        created_at: "desc",
+      },
+    });
+
+    return Responses({
+      code: 200,
+      data: {
+        all,
+        one_minute,
+      },
+      detail_message: "Printer berhasil disimpan atau diperbarui",
+    });
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      return Responses({
+        code: 500,
+        detail_message: `Gagal mengupdate data: ${err.message}`,
+      });
+    }
+    return Responses({ code: 500, detail_message: "Gagal mengupdate data" });
+  }
+});
+
+ipcMain.handle("print_struk", async (_, data: KitchenOrderType) => {
+  try {
+    return StrukWindow(data);
+  } catch (err) {
+    if (err instanceof Error) {
+      return Responses({
+        code: 500,
+        detail_message: `Gagal mengupdate data: ${err.message}`,
+      });
+    }
+    return Responses({ code: 500, detail_message: "Gagal mengupdate data" });
+  }
+});
 
 ipcMain.handle("confirm", async (_, title: string = "Apakah anda yakin?") => {
   const result = await dialog.showMessageBox(mainWindow!, {
