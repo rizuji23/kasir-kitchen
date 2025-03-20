@@ -2,23 +2,6 @@ import { IResponses } from "./lib/responses.ts";
 import { KitchenOrderType } from "./types/index.ts";
 
 interface UpdateAPI {
-  checkForUpdates: () => void;
-  downloadUpdate: () => void;
-  quitAndInstall: () => void;
-  onUpdateAvailable: (
-    callback: (info: { version: string; releaseNotes: string }) => void,
-  ) => void;
-  onUpdateNotAvailable: (callback: () => void) => void;
-  onUpdateDownloaded: (callback: () => void) => void;
-  onUpdateError: (callback: (error: Error) => void) => void;
-  onDownloadProgress: (
-    callback: (progress: {
-      percent: number;
-      bytesPerSecond: number;
-      transferred: number;
-      total: number;
-    }) => void,
-  ) => void;
   get_version: () => string;
 }
 
@@ -42,6 +25,7 @@ interface ApiAPI {
     }>
   >;
   print_struk: (data: KitchenOrderType) => void;
+  open_url: (url: string) => Promise<void>;
 }
 
 declare global {

@@ -8,7 +8,7 @@ import { prisma } from "../database.js";
 export default function StrukWindow(data: KitchenOrderType) {
   try {
     const printWindow = new BrowserWindow({
-      show: true,
+      show: false,
       webPreferences: {
         preload: getPreloadPath(),
         contextIsolation: true,

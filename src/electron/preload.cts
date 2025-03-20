@@ -1,30 +1,6 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("update", {
-  checkForUpdates: () => ipcRenderer.send("check-for-updates"),
-  downloadUpdate: () => ipcRenderer.send("download-update"),
-  quitAndInstall: () => ipcRenderer.send("quit-and-install"),
-  onUpdateAvailable: (
-    callback: (info: { version: string; releaseNotes: string }) => void,
-  ) =>
-    ipcRenderer.on("update-available", (_: any, info: any) => callback(info)),
-  onUpdateNotAvailable: (callback: () => void) =>
-    ipcRenderer.on("update-not-available", () => callback()),
-  onUpdateDownloaded: (callback: () => void) =>
-    ipcRenderer.on("update-downloaded", () => callback()),
-  onUpdateError: (callback: (error: Error) => void) =>
-    ipcRenderer.on("update-error", (_: any, error: any) => callback(error)),
-  onDownloadProgress: (
-    callback: (progress: {
-      percent: number;
-      bytesPerSecond: number;
-      transferred: number;
-      total: number;
-    }) => void,
-  ) =>
-    ipcRenderer.on("download-progress", (_: any, progress: any) =>
-      callback(progress),
-    ),
   get_version: () => ipcRenderer.invoke("get_version"),
 });
 
@@ -50,4 +26,5 @@ contextBridge.exposeInMainWorld("api", {
   confirm: (title?: string) => ipcRenderer.invoke("confirm", title),
   history_list: () => ipcRenderer.invoke("history_list"),
   print_struk: (data: unknown) => ipcRenderer.invoke("print_struk", data),
+  open_url: (url: string) => ipcRenderer.invoke("open_url", url),
 });

@@ -1,6 +1,6 @@
 import NavbarCustom from "../components/navbar";
+import AboutPage from "./section/About";
 import PrinterApi from "./section/PrinterApi";
-import UpdatePage from "./section/Update";
 
 export default function SettingsPage() {
     return (
@@ -9,7 +9,7 @@ export default function SettingsPage() {
                 <NavbarCustom />
                 <div className="my-2 container mx-auto grid gap-3">
                     <PrinterApi />
-                    <UpdatePage />
+                    <AboutPage />
                 </div>
             </div>
         </>
