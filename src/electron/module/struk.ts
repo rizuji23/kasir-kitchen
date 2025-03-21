@@ -38,19 +38,19 @@ export default function StrukWindow(data: KitchenOrderType) {
           .then((result) => {
             if (result) {
               printWindow.webContents.send("print_struk", data);
-              printWindow.webContents.print({
-                silent: true,
-                printBackground: true,
-                deviceName: result.content || "Microsoft Print to PDF",
-                copies: 0,
-                margins: {
-                  marginType: "custom",
-                  top: 0,
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                },
-              });
+              setTimeout(() => {
+                printWindow.webContents.print({
+                  silent: true,
+                  printBackground: true,
+                  deviceName: result.content || "Microsoft Print to PDF",
+                  copies: 0,
+                  margins: {
+                    marginType: "none",
+                  },
+                  scaleFactor: 84,
+                });
+              }, 2000);
+              return true;
             } else {
               dialog.showErrorBox(
                 "Terjadi Kesalahan",
@@ -58,6 +58,13 @@ export default function StrukWindow(data: KitchenOrderType) {
               );
               return false;
             }
+          })
+          .catch((err) => {
+            dialog.showErrorBox(
+              "Terjadi Kesalahan",
+              `Error StrukWindow: ${JSON.stringify(err)}`,
+            );
+            return false;
           });
       }, 1000);
     });

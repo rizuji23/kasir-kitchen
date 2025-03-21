@@ -20,10 +20,22 @@ export default function StrukPage() {
         }
     }, []);
 
+    useEffect(() => {
+        document.body.style.margin = "0";
+        document.body.style.padding = "0";
+        document.body.style.setProperty("padding", "0", "important"); // Force override if needed
+        document.body.style.setProperty("margin", "0", "important"); // Force override if needed
+
+        return () => {
+            document.body.style.margin = "";
+            document.body.style.padding = "";
+        };
+    }, []);
+
     return (
         <>
             {
-                struk ? <div className="w-[219px] !font-mono !font-black my-2">
+                struk ? <div className="w-[210px] print:w-[219px] !font-mono !font-black mb-2">
                     <div>
                         <h3 className="text-lg text-center font-bold">KITCHEN ORDER</h3>
                         <p className="text-center">({struk.order_type === "TABLE" ? "Meja Billiard" : "Cafe"})</p>
