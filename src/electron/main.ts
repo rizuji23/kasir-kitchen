@@ -94,6 +94,7 @@ if (!gotTheLock) {
                 change: el.change,
                 status: el.status,
                 shift: el.shift,
+                keterangan: el.keterangan,
                 menucafe: { connect: { id: menuCafeData[index].id } },
               };
             });

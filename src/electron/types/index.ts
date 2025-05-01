@@ -46,6 +46,7 @@ export interface OrderCafeType {
   created_at: Date;
   updated_at: Date;
   shift: string;
+  keterangan: string;
 }
 
 export type GroupedCafeItem = {

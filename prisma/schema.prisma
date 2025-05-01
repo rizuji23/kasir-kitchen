@@ -57,6 +57,7 @@ model OrderCafe {
   change Int
   status String
   shift String
+  keterangan String?
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
   kitchenDataId   Int

@@ -90,6 +90,12 @@ export default function StrukBarPage() {
                             })
                         }
                     </div>
+                    {
+                        Array.isArray(struk.order) && struk.order.length > 0 ? struk.order[0].keterangan ? <div className="my-1 p-1 border border-dashed border-black">
+                            <small>Keterangan: </small>
+                            <p className="text-xs">{struk.order[0]?.keterangan}</p>
+                        </div> : <></> : <></>
+                    }
                     <StripDivider />
                 </div>
                     : <></>

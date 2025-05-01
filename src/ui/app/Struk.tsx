@@ -74,11 +74,13 @@ export default function StrukPage() {
                     <div className="text-sm !font-black grid gap-2 py-2 px-2">
                         {
                             struk.order_type === "CAFE" ? (struk.order || []).map((el, i) => {
-                                return <div className="flex justify-between gap-1" key={i}>
-                                    <div className="flex flex-col">
-                                        <p>{el.menucafe.name || "-"}</p>
+                                return <div key={i}>
+                                    <div className="flex justify-between gap-1">
+                                        <div className="flex flex-col">
+                                            <p>{el.menucafe.name || "-"}</p>
+                                        </div>
+                                        <p className="text-end self-end">{el.qty || "0"}x</p>
                                     </div>
-                                    <p className="text-end self-end">{el.qty || "0"}x</p>
                                 </div>
                             }) : (struk.item || []).map((el, i) => {
                                 return <div className="flex justify-between gap-1" key={i}>
@@ -90,6 +92,12 @@ export default function StrukPage() {
                             })
                         }
                     </div>
+                    {
+                        Array.isArray(struk.order) && struk.order.length > 0 ? struk.order[0].keterangan ? <div className="my-1 p-1 border border-dashed border-black">
+                            <small>Keterangan: </small>
+                            <p className="text-xs">{struk.order[0]?.keterangan}</p>
+                        </div> : <></> : <></>
+                    }
                     <StripDivider />
                 </div>
                     : <></>
