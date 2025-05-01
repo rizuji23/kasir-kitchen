@@ -5,9 +5,9 @@ import { isDev } from "../utils.js";
 import path from "path";
 import { prisma } from "../database.js";
 
-export default async function StrukWindow(data: KitchenOrderType) {
+export default async function StrukBarWindow(data: KitchenOrderType) {
   try {
-    const printWindow = new BrowserWindow({
+    const printWindowBar = new BrowserWindow({
       show: false,
       webPreferences: {
         preload: getPreloadPath(),
@@ -16,30 +16,29 @@ export default async function StrukWindow(data: KitchenOrderType) {
       },
     });
 
-    // printWindow.webContents.openDevTools();
+    // printWindowBar.webContents.openDevTools();
 
     if (isDev()) {
-      printWindow.loadURL("http://localhost:5124/#/struk");
+      printWindowBar.loadURL("http://localhost:5124/#/struk_bar");
     } else {
-      printWindow.loadFile(
+      printWindowBar.loadFile(
         path.join(app.getAppPath(), "/dist-react/index.html"),
-        { hash: "struk" },
+        { hash: "struk_bar" },
       );
     }
 
-    printWindow.webContents.on("did-finish-load", () => {
+    printWindowBar.webContents.on("did-finish-load", () => {
       prisma.settings
         .findFirst({
           where: {
-            id_settings: "PRINTER_KITCHEN",
+            id_settings: "PRINTER_BAR",
           },
         })
         .then((result) => {
-          console.log("result printer", result);
           if (result) {
-            printWindow.webContents.send("print_struk", data);
+            printWindowBar.webContents.send("print_struk", data);
             setTimeout(() => {
-              printWindow.webContents.print({
+              printWindowBar.webContents.print({
                 silent: true,
                 printBackground: true,
                 deviceName: result.content || "Microsoft Print to PDF",

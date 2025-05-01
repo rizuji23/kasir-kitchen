@@ -5,11 +5,19 @@ export interface WebsocketKitchenType<T> {
   name: string;
 }
 
+export interface MenuCafeCategoryType {
+  id: number;
+  name: string;
+  created_at: string;
+}
+
 export interface MenuCafeType {
   id: number;
   name: string;
   price: number;
   categoryMenuId?: number;
+  category_menu: MenuCafeCategoryType;
+  category_name: string;
   price_profit: number;
   price_modal: number;
   created_at: Date;

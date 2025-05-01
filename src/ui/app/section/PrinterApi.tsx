@@ -13,7 +13,7 @@ interface IPrinterReturn {
     settings: Settings
 }
 
-export default function PrinterApi() {
+export default function PrinterApi({ title, type_printer }: { title: string, type_printer: "KITCHEN" | "BAR" }) {
     const [printer, setPrinter] = useState<IPrinters[]>([]);
     const [loading, setLoading] = useState<boolean>(false);
     const [selected, setSelected] = useState<string>("");
@@ -21,7 +21,7 @@ export default function PrinterApi() {
     const getPrinters = async () => {
         try {
             setLoading(true)
-            const res = await window.api.get_printer() as unknown as IResponses<IPrinterReturn>
+            const res = await window.api.get_printer(type_printer) as unknown as IResponses<IPrinterReturn>
             console.log(res)
             if (res.status && res.data?.printers) {
                 setPrinter(res.data.printers);
@@ -41,8 +41,8 @@ export default function PrinterApi() {
         setLoading(true)
         try {
             if (await window.api.confirm()) {
-                console.log("TEST")
-                const res = await window.api.save_printer("PRINTER", selected, selected)
+                console.log("TEST", type_printer)
+                const res = await window.api.save_printer(type_printer === "KITCHEN" ? "PRINTER_KITCHEN" : "PRINTER_BAR", selected, selected)
                 setLoading(false);
                 if (res.status) {
                     toast.success("Printer berhasil disimpan.");
@@ -68,11 +68,11 @@ export default function PrinterApi() {
         <>
             <Form validationBehavior="native" onSubmit={savePrinter} className="block">
                 <Card className="h-fit">
-                    <CardHeader className="font-bold">Printer</CardHeader>
+                    <CardHeader className="font-bold">{title}</CardHeader>
                     <CardBody>
                         <div className="grid gap-3">
                             <SelectCustom label="Nama Printer" onChange={(e) => setSelected(e.target.value)} value={selected}>
-                                <SelectCustom.Option value="">Pilih Printer...</SelectCustom.Option>
+                                <SelectCustom.Option value="">Pilih {title}...</SelectCustom.Option>
                                 {
                                     printer.map((item) => (
                                         <SelectCustom.Option value={item.name}>{item.displayName}</SelectCustom.Option>

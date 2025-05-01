@@ -9,6 +9,7 @@ import { KitchenOrderType, WebsocketKitchenType } from "./types/index.js";
 import StrukWindow from "./module/struk.js";
 import { prisma } from "./database.js";
 import Responses from "./lib/responses.js";
+import StrukBarWindow from "./module/struk_bar.js";
 
 log.initialize();
 
@@ -76,6 +77,7 @@ if (!gotTheLock) {
                     price: el.menucafe.price,
                     price_modal: el.menucafe.price_modal,
                     price_profit: el.menucafe.price_profit,
+                    category_name: el.menucafe.category_menu.name,
                   },
                 });
               }),
@@ -128,9 +130,33 @@ if (!gotTheLock) {
               },
             });
 
+            const makanan = kitchen.order.filter(
+              (item) => item.menucafe.category_name === "Makanan",
+            );
+            const minuman = kitchen.order.filter(
+              (item) => item.menucafe.category_name === "Minuman",
+            );
+
             console.log("kitchen", JSON.stringify(kitchen));
 
-            StrukWindow(kitchen as unknown as KitchenOrderType);
+            console.log("Makanan", makanan);
+            console.log("Minuman", minuman);
+
+            if (makanan.length !== 0) {
+              StrukWindow({
+                ...kitchen,
+                order: makanan,
+              } as unknown as KitchenOrderType);
+            }
+
+            if (minuman.length !== 0) {
+              setTimeout(() => {
+                StrukBarWindow({
+                  ...kitchen,
+                  order: minuman,
+                } as unknown as KitchenOrderType);
+              }, 5000);
+            }
 
             if (mainWindow) {
               mainWindow.webContents.send("on_message_receive", data);
@@ -180,12 +206,13 @@ function sendClientListToRenderer() {
   }
 }
 
-ipcMain.handle("get_printer", async (_, id: number | null) => {
+ipcMain.handle("get_printer", async (_, type_printer: "KITCHEN" | "BAR") => {
   const printers = await mainWindow?.webContents.getPrintersAsync();
 
   const settings = await prisma.settings.findFirst({
     where: {
-      id: id || undefined,
+      id_settings:
+        type_printer === "KITCHEN" ? "PRINTER_KITCHEN" : "PRINTER_BAR",
     },
   });
 
@@ -210,11 +237,12 @@ ipcMain.handle(
 
       let res;
 
+      console.log("check_id", check_id);
+
       if (check_id) {
         res = await prisma.settings.update({
           where: { id_settings: check_id?.id_settings },
           data: {
-            id_settings: "PRINTER",
             label_settings: label_settings,
             content: content,
           },
@@ -222,14 +250,14 @@ ipcMain.handle(
       } else {
         res = await prisma.settings.create({
           data: {
-            id_settings: "PRINTER",
+            id_settings: id === "KITCHEN" ? "PRINTER_KITCHEN" : "PRINTER_BAR",
             label_settings: label_settings,
             content: content,
             url: "",
           },
         });
       }
-
+      console.log("res", res);
       return Responses({
         code: 200,
         data: res,
@@ -304,7 +332,26 @@ ipcMain.handle("history_list", async () => {
 
 ipcMain.handle("print_struk", async (_, data: KitchenOrderType) => {
   try {
-    return StrukWindow(data);
+    const makanan = data.order.filter(
+      (item) => item.menucafe.category_name === "Makanan",
+    );
+    const minuman = data.order.filter(
+      (item) => item.menucafe.category_name === "Minuman",
+    );
+
+    if (makanan.length !== 0) {
+      await StrukWindow({
+        ...data,
+        order: makanan,
+      } as unknown as KitchenOrderType);
+    }
+
+    if (minuman.length !== 0) {
+      await StrukBarWindow({
+        ...data,
+        order: minuman,
+      } as unknown as KitchenOrderType);
+    }
   } catch (err) {
     if (err instanceof Error) {
       return Responses({

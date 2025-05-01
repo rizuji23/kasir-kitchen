@@ -22,6 +22,7 @@ model Settings {
 model MenuCafe {
   id Int   @id @default(autoincrement())
   name String
+  category_name String @default("Makanan")
   price Int
   price_modal Int
   price_profit Int

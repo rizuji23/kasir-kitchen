@@ -6,7 +6,7 @@ function StripDivider() {
     return <p className="text-xs !font-black">--------------------------------</p>
 }
 
-export default function StrukPage() {
+export default function StrukBarPage() {
     const [struk, setStruk] = useState<KitchenOrderType | null>(null);
 
     useEffect(() => {
@@ -37,7 +37,7 @@ export default function StrukPage() {
             {
                 struk ? <div className="w-[210px] print:w-[219px] !font-mono !font-black mb-2">
                     <div>
-                        <h3 className="text-lg text-center font-bold">KITCHEN</h3>
+                        <h3 className="text-lg text-center font-bold">BAR</h3>
                         <p className="text-center">({struk.order_type === "TABLE" ? "Meja Billiard" : "Cafe"})</p>
                     </div>
                     <StripDivider />

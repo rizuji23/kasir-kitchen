@@ -1,10 +1,16 @@
-import { Button, Card, CardBody, CardHeader, Divider } from "@heroui/react";
+import { Button, Card, CardBody, CardHeader, Chip, Divider, Spinner } from "@heroui/react";
 import NavbarCustom from "../components/navbar";
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@heroui/react";
 import { useEffect, useState } from "react";
 import { KitchenOrderType } from "../../electron/types";
 import toast from "react-hot-toast";
 import moment from "moment";
+import DataTable, { TableColumn } from "react-data-table-component";
+
+export function LoadingComponent() {
+    return <div className="flex justify-center my-5">
+        <Spinner />
+    </div>
+}
 
 function TableOrder({ data }: { data: KitchenOrderType[] }) {
     const print_struk = async (data_kitchen: KitchenOrderType) => {
@@ -15,33 +21,35 @@ function TableOrder({ data }: { data: KitchenOrderType[] }) {
         }
     }
 
+    const columns: TableColumn<KitchenOrderType>[] = [
+        {
+            name: "ID Order",
+            selector: row => row.order[0].id_order_cafe,
+            cell: row => <span className="font-bold">{row.order[0].id_order_cafe}</span>
+        },
+        {
+            name: "Nama Pelanggan",
+            selector: row => row.order[0].name,
+        },
+        {
+            name: "Nomor Meja",
+            selector: row => row.order_type,
+            cell: row => row.order_type === "TABLE" ? <Chip size="sm" color="success">{row.no_billiard}</Chip> : <Chip size="sm" color="primary">{row.no_meja}</Chip>
+        },
+        {
+            name: "Tanggal",
+            selector: row => moment(row.created_at).format("DD/MM/YYYY HH:mm:ss"),
+            wrap: true
+        },
+        {
+            name: "Opsi",
+            cell: row => <Button size="sm" color="success" onPress={() => print_struk(row)}>Print</Button>
+        }
+    ]
+
     return (
         <>
-            <Table removeWrapper>
-                <TableHeader>
-                    <TableColumn>ID Order</TableColumn>
-                    <TableColumn>Nama Pelanggan</TableColumn>
-                    <TableColumn>Nomor Meja</TableColumn>
-                    <TableColumn>Tanggal</TableColumn>
-                    <TableColumn>Opsi</TableColumn>
-                </TableHeader>
-                <TableBody>
-                    {
-                        data.map((el, i) => {
-                            return <TableRow key={i}>
-                                <TableCell>{el.order[0].id_order_cafe}</TableCell>
-                                <TableCell>{el.order[0].name}</TableCell>
-                                <TableCell>{el.order_type === "TABLE" ? el.no_billiard : el.no_meja}</TableCell>
-                                <TableCell>{moment(el.created_at).format("DD/MM/YYYY HH:mm:ss")}</TableCell>
-                                <TableCell>
-                                    <Button size="sm" color="success" onPress={() => print_struk(el)}>Print</Button>
-                                </TableCell>
-                            </TableRow>
-                        })
-                    }
-
-                </TableBody>
-            </Table>
+            <DataTable columns={columns} pagination data={data} noDataComponent={<h3 className="font-bold text-md p-6">Data Kosong</h3>} progressComponent={<LoadingComponent />} />
         </>
     )
 }

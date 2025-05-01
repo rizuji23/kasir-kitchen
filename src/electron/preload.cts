@@ -20,7 +20,8 @@ contextBridge.exposeInMainWorld("api", {
   receive: (channel: string, callback: (data: any) => void) => {
     ipcRenderer.on(channel, (_: any, data: any) => callback(data));
   },
-  get_printer: () => ipcRenderer.invoke("get_printer"),
+  get_printer: (type_printer: "KITCHEN" | "BAR") =>
+    ipcRenderer.invoke("get_printer", type_printer),
   save_printer: (id: string | null, label_settings: string, content: string) =>
     ipcRenderer.invoke("save_printer", id, label_settings, content),
   confirm: (title?: string) => ipcRenderer.invoke("confirm", title),

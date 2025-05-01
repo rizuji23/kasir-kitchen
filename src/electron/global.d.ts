@@ -11,7 +11,9 @@ interface ApiAPI {
   removePrintStruk: () => void;
   get_local_network: () => string | null;
   receive: (channel: string, callback: (data: string[]) => void) => void;
-  get_printer: () => Promise<IResponses<unknown>>;
+  get_printer: (
+    type_printer: "KITCHEN" | "BAR",
+  ) => Promise<IResponses<unknown>>;
   save_printer: (
     id: string | null,
     label_settings: string,
