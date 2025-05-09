@@ -11,6 +11,15 @@ export function getPreloadPath() {
   return preloadPath;
 }
 
+export function getNotificationSound() {
+  const soundPath = isDev()
+    ? path.join(app.getAppPath(), ".", "/dist-electron/pesanan_masuk.mp3") // Development path
+    : path.join(app.getAppPath(), "/dist-electron/pesanan_masuk.mp3"); // Production path
+
+  console.log("Preload Path:", soundPath); // Debugging
+  return soundPath;
+}
+
 export function getUIPath() {
   return path.join(app.getAppPath(), "/dist-react/index.html");
 }

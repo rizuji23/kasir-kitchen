@@ -1,5 +1,9 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
-import { getPreloadPath, getUIPath } from "./pathResolver.js";
+import {
+  getNotificationSound,
+  getPreloadPath,
+  getUIPath,
+} from "./pathResolver.js";
 import { isDev } from "./utils.js";
 import log from "electron-log";
 import { WebSocketServer } from "ws";
@@ -10,6 +14,7 @@ import StrukWindow from "./module/struk.js";
 import { prisma } from "./database.js";
 import Responses from "./lib/responses.js";
 import StrukBarWindow from "./module/struk_bar.js";
+import soundPlay from "sound-play";
 
 log.initialize();
 
@@ -158,6 +163,10 @@ if (!gotTheLock) {
                 } as unknown as KitchenOrderType);
               }, 5000);
             }
+            soundPlay
+              .play(getNotificationSound(), 1)
+              .then(() => console.log("Playback finished"))
+              .catch(console.error);
 
             if (mainWindow) {
               mainWindow.webContents.send("on_message_receive", data);
