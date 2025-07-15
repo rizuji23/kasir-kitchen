@@ -7,7 +7,7 @@ import { Toaster } from 'react-hot-toast'
 
 createRoot(document.getElementById('root')!).render(
   <HashRouter>
-    <Toaster position="top-right" />
+    <Toaster position="top-right" reverseOrder={false} />
     <HeroUIProvider>
       <App />
     </HeroUIProvider>
