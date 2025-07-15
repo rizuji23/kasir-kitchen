@@ -125,6 +125,7 @@ if (!gotTheLock) {
                 },
                 no_billiard: data_kitchen.data.no_billiard,
                 no_meja: data_kitchen.data.no_meja,
+                status_kitchen: "NO_PROCESSED",
               },
               include: {
                 order: {
@@ -148,21 +149,21 @@ if (!gotTheLock) {
             console.log("Makanan", makanan);
             console.log("Minuman", minuman);
 
-            if (makanan.length !== 0) {
-              StrukWindow({
-                ...kitchen,
-                order: makanan,
-              } as unknown as KitchenOrderType);
-            }
+            // if (makanan.length !== 0) {
+            //   StrukWindow({
+            //     ...kitchen,
+            //     order: makanan,
+            //   } as unknown as KitchenOrderType);
+            // }
 
-            if (minuman.length !== 0) {
-              setTimeout(() => {
-                StrukBarWindow({
-                  ...kitchen,
-                  order: minuman,
-                } as unknown as KitchenOrderType);
-              }, 5000);
-            }
+            // if (minuman.length !== 0) {
+            //   setTimeout(() => {
+            //     StrukBarWindow({
+            //       ...kitchen,
+            //       order: minuman,
+            //     } as unknown as KitchenOrderType);
+            //   }, 5000);
+            // }
             soundPlay
               .play(getNotificationSound(), 1)
               .then(() => console.log("Playback finished"))
@@ -287,7 +288,7 @@ ipcMain.handle(
 
 ipcMain.handle("history_list", async () => {
   try {
-    const oneMinuteAgo = new Date(Date.now() - 60000);
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const all = await prisma.kitchenData.findMany({
       include: {
         order: {
@@ -302,10 +303,10 @@ ipcMain.handle("history_list", async () => {
       },
     });
 
-    const one_minute = await prisma.kitchenData.findMany({
+    const one_hours = await prisma.kitchenData.findMany({
       where: {
         created_at: {
-          gte: oneMinuteAgo,
+          gte: oneHourAgo,
         },
       },
       include: {
@@ -325,7 +326,7 @@ ipcMain.handle("history_list", async () => {
       code: 200,
       data: {
         all,
-        one_minute,
+        one_hours,
       },
       detail_message: "Printer berhasil disimpan atau diperbarui",
     });
@@ -340,38 +341,72 @@ ipcMain.handle("history_list", async () => {
   }
 });
 
-ipcMain.handle("print_struk", async (_, data: KitchenOrderType) => {
-  try {
-    const makanan = data.order.filter(
-      (item) => item.menucafe.category_name === "Makanan",
-    );
-    const minuman = data.order.filter(
-      (item) => item.menucafe.category_name === "Minuman",
-    );
+const printStrukNow = async (data: KitchenOrderType) => {
+  const makanan = data.order.filter(
+    (item) => item.menucafe.category_name === "Makanan",
+  );
+  const minuman = data.order.filter(
+    (item) => item.menucafe.category_name === "Minuman",
+  );
 
-    if (makanan.length !== 0) {
-      await StrukWindow({
-        ...data,
-        order: makanan,
-      } as unknown as KitchenOrderType);
-    }
-
-    if (minuman.length !== 0) {
-      await StrukBarWindow({
-        ...data,
-        order: minuman,
-      } as unknown as KitchenOrderType);
-    }
-  } catch (err) {
-    if (err instanceof Error) {
-      return Responses({
-        code: 500,
-        detail_message: `Gagal mengupdate data: ${err.message}`,
-      });
-    }
-    return Responses({ code: 500, detail_message: "Gagal mengupdate data" });
+  if (makanan.length !== 0) {
+    await StrukWindow({
+      ...data,
+      order: makanan,
+    } as unknown as KitchenOrderType);
   }
-});
+
+  if (minuman.length !== 0) {
+    await StrukBarWindow({
+      ...data,
+      order: minuman,
+    } as unknown as KitchenOrderType);
+  }
+};
+
+ipcMain.handle(
+  "print_struk",
+  async (
+    _,
+    data: KitchenOrderType,
+    type_status: "ACCEPT" | "REJECT" | "DONE" | "PRINT",
+  ) => {
+    try {
+      console.log("type_status", type_status);
+      if (type_status === "PRINT") {
+        printStrukNow(data);
+      } else {
+        const update_kitchen = await prisma.kitchenData.update({
+          data: {
+            status_kitchen:
+              type_status === "ACCEPT"
+                ? "PROCESSED"
+                : type_status === "REJECT"
+                ? "REJECT"
+                : "DONE",
+          },
+          where: {
+            id: data.id,
+          },
+        });
+
+        if (update_kitchen) {
+          if (type_status !== "REJECT") {
+            printStrukNow(data);
+          }
+        }
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        return Responses({
+          code: 500,
+          detail_message: `Gagal mengupdate data: ${err.message}`,
+        });
+      }
+      return Responses({ code: 500, detail_message: "Gagal mengupdate data" });
+    }
+  },
+);
 
 ipcMain.handle("confirm", async (_, title: string = "Apakah anda yakin?") => {
   const result = await dialog.showMessageBox(mainWindow!, {

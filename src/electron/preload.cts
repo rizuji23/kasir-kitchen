@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("save_printer", id, label_settings, content),
   confirm: (title?: string) => ipcRenderer.invoke("confirm", title),
   history_list: () => ipcRenderer.invoke("history_list"),
-  print_struk: (data: unknown) => ipcRenderer.invoke("print_struk", data),
+  print_struk: (data: unknown, type_status: string) =>
+    ipcRenderer.invoke("print_struk", data, type_status),
   open_url: (url: string) => ipcRenderer.invoke("open_url", url),
 });

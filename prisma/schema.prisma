@@ -40,6 +40,8 @@ model KitchenData {
   item ItemOrder[]
   no_billiard String @default("-")
   no_meja String @default("-")
+  status_kitchen String @default("NO_PROCESSED")
+  status_timer String @default("NO_STARTED")
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 }

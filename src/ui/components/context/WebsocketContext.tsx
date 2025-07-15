@@ -2,10 +2,13 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { toast } from "react-hot-toast";
 import { Howl } from "howler";
 import notification_masuk from "../../assets/notification_masuk.mp3";
+import { KitchenOrderType, WebsocketKitchenType } from "../../../electron/types";
 
 interface WebSocketContextType {
     clientIPs: string[];
+    data_incoming: KitchenOrderType | null
 }
+
 
 const WebSocketContext = createContext<WebSocketContextType | undefined>(undefined);
 
@@ -13,6 +16,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     const [clientIPs, setClientIPs] = useState<string[]>(() => {
         return JSON.parse(localStorage.getItem("clientIPs") || "[]");
     });
+
+    const [data_incoming, setDataIncoming] = useState<KitchenOrderType | null>(null);
 
     // Create sound instance once and reuse it
     const notificationSound = new Howl({
@@ -42,8 +47,21 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
                 localStorage.setItem("clientIPs", JSON.stringify(newIPs));
             });
 
-            window.api.onMessageChange((data: unknown) => {
-                console.log("Received message:", data);
+            window.api.onMessageChange((data: string) => {
+
+
+                try {
+                    const json = JSON.parse(data);
+
+                    if (json.type === "kitchen") {
+                        const data_kitchen: WebsocketKitchenType<KitchenOrderType> = json;
+
+                        setDataIncoming({ ...data_kitchen.data, status_kitchen: "NO_PROCESSED" });
+                    }
+
+                } catch (err) {
+                    toast.error(`Terjadi Kesalahan: ${err}`);
+                }
 
                 if (notificationSound) {
                     notificationSound.play();
@@ -54,10 +72,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
                 toast.success(`Pesanan Masuk`, { duration: 5000 });
             });
         }
-    }, []); // Runs only once on mount
+    }, []);
 
     return (
-        <WebSocketContext.Provider value={{ clientIPs }}>
+        <WebSocketContext.Provider value={{ clientIPs, data_incoming }}>
             {children}
         </WebSocketContext.Provider>
     );

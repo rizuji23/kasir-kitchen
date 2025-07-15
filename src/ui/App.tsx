@@ -5,18 +5,21 @@ import HomePage from './app/Home'
 import HistoryPage from './app/History'
 import SettingsPage from './app/Settings'
 import StrukBarPage from './app/StrukBar'
+import { WebSocketProvider } from './components/context/WebsocketContext'
 
 function App() {
 
   return (
     <>
-      <Routes>
-        <Route path="/" element={<HomePage />}></Route>
-        <Route path="/struk" element={<StrukPage />}></Route>
-        <Route path="/struk_bar" element={<StrukBarPage />}></Route>
-        <Route path='/history' element={<HistoryPage />}></Route>
-        <Route path='/settings' element={<SettingsPage />}></Route>
-      </Routes>
+      <WebSocketProvider>
+        <Routes>
+          <Route path="/" element={<HomePage />}></Route>
+          <Route path="/struk" element={<StrukPage />}></Route>
+          <Route path="/struk_bar" element={<StrukBarPage />}></Route>
+          <Route path='/history' element={<HistoryPage />}></Route>
+          <Route path='/settings' element={<SettingsPage />}></Route>
+        </Routes>
+      </WebSocketProvider>
     </>
   )
 }

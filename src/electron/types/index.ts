@@ -60,6 +60,7 @@ export type GroupedCafeItem = {
 };
 
 export interface KitchenOrderType {
+  id: number;
   order_type: "CAFE" | "TABLE";
   order: OrderCafeType[];
   item: GroupedCafeItem[];
@@ -67,6 +68,7 @@ export interface KitchenOrderType {
   name_cashier: string;
   no_billiard: string;
   no_meja: string;
+  status_kitchen: "NO_PROCESSED" | "PROCESSED" | "REJECT" | "DONE";
 }
 
 export interface IPrinters {

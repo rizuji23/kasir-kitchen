@@ -7,7 +7,7 @@ export default function SettingsPage() {
         <>
             <div>
                 <NavbarCustom />
-                <div className="my-5 container mx-auto grid gap-3">
+                <div className="my-5 container mx-auto px-5 grid gap-3">
                     <PrinterApi title="Printer Kitchen" type_printer="KITCHEN" />
                     <PrinterApi title="Printer Bar" type_printer="BAR" />
                     <AboutPage />

@@ -23,10 +23,13 @@ interface ApiAPI {
   history_list: () => Promise<
     IResponses<{
       all: KitchenOrderType[];
-      one_minute: KitchenOrderType[];
+      one_hours: KitchenOrderType[];
     }>
   >;
-  print_struk: (data: KitchenOrderType) => void;
+  print_struk: (
+    data: KitchenOrderType,
+    type_status: "ACCEPT" | "REJECT" | "DONE" | "PRINT",
+  ) => void;
   open_url: (url: string) => Promise<void>;
 }
 

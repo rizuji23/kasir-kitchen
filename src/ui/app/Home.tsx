@@ -5,10 +5,12 @@ import { Chip } from "@heroui/react";
 export default function HomePage() {
     const { clientIPs } = useWebSocket();
 
+
+
     return (
         <div>
             <NavbarCustom />
-            <div className="my-5 container mx-auto">
+            <div className="my-5 container mx-auto px-5">
                 <div className="flex justify-center">
                     <div className="grid gap-3 min-w-[300px]">
                         <h3 className="font-bold text-center text-xl">Kasir Yang Terkoneksi:</h3>
