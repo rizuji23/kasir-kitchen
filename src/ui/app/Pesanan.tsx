@@ -1,16 +1,13 @@
-import { Button, Card, CardBody, CardHeader, Chip, Divider, Spinner } from "@heroui/react";
+import { Button, Card, CardBody, CardHeader, Chip, Divider } from "@heroui/react";
 import NavbarCustom from "../components/navbar";
 import { useEffect, useState } from "react";
 import { KitchenOrderType } from "../../electron/types";
 import toast from "react-hot-toast";
-import moment from "moment";
+import { useWebSocket } from "../components/context/WebsocketContext";
 import DataTable, { TableColumn } from "react-data-table-component";
-
-export function LoadingComponent() {
-    return <div className="flex justify-center my-5">
-        <Spinner />
-    </div>
-}
+import moment from "moment";
+import { LoadingComponent } from "./History";
+import PesananTimer from "./PesananTimer";
 
 export function TableOrder({ data, api }: { data: KitchenOrderType[], api: () => Promise<void> }) {
     const print_struk = async (data_kitchen: KitchenOrderType, type_status: "ACCEPT" | "REJECT" | "DONE" | "PRINT") => {
@@ -53,6 +50,16 @@ export function TableOrder({ data, api }: { data: KitchenOrderType[], api: () =>
             cell: row => row.status_kitchen || "-"
         },
         {
+            name: "Timer",
+            cell: row => <>
+                {
+                    row.status_timer === "NO_STARTED" ? <Chip>Belum Dimulai</Chip> : <>
+                        <PesananTimer data={row} />
+                    </>
+                }
+            </>
+        },
+        {
             name: "Tanggal",
             selector: row => moment(row.created_at).format("DD/MM/YYYY HH:mm:ss"),
             wrap: true
@@ -78,18 +85,20 @@ export function TableOrder({ data, api }: { data: KitchenOrderType[], api: () =>
     )
 }
 
-export default function HistoryPage() {
-    const [all, setAll] = useState<KitchenOrderType[]>([]);
-    const [minutes, setMinutes] = useState<KitchenOrderType[]>([]);
+export default function PesananPage() {
+    const [new_order, setNewOrder] = useState<KitchenOrderType[]>([]);
+    const [on_progress, setOnProgress] = useState<KitchenOrderType[]>([]);
 
-    const get_all = async () => {
+    const { data_incoming } = useWebSocket();
+
+    const get_api = async () => {
         try {
-            const res = await window.api.history_list();
+            const res = await window.api.order_list();
 
             if (res.status && res.data) {
                 console.log("res", res);
-                setAll(res.data.all);
-                setMinutes(res.data.one_hours);
+                setNewOrder(res.data.new_order);
+                setOnProgress(res.data.on_progress);
             }
         } catch (err) {
             toast.error(`Terjadi kesalahan: ${err}`);
@@ -97,31 +106,31 @@ export default function HistoryPage() {
     }
 
     useEffect(() => {
-        get_all();
-    }, []);
+        get_api();
+    }, [data_incoming])
 
     return (
         <>
             <div>
                 <NavbarCustom />
-                <div className="my-5 grid gap-3 container mx-auto px-5">
+                <div className="my-5 grid gap-5 container mx-auto px-5">
                     <Card>
                         <CardHeader>
-                            <h3 className="font-bold">History 1 Jam yang lalu</h3>
+                            <h3 className="font-bold">Pesanan Masuk</h3>
                         </CardHeader>
                         <Divider />
                         <CardBody>
-                            <TableOrder data={minutes} api={get_all} />
+                            <TableOrder data={new_order} api={get_api} />
                         </CardBody>
                     </Card>
 
                     <Card>
                         <CardHeader>
-                            <h3 className="font-bold">History Order Semua</h3>
+                            <h3 className="font-bold">Pesanan Sedang Diproses</h3>
                         </CardHeader>
                         <Divider />
                         <CardBody>
-                            <TableOrder data={all} api={get_all} />
+                            <TableOrder data={on_progress} api={get_api} />
                         </CardBody>
                     </Card>
                 </div>

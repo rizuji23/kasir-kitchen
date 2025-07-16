@@ -26,6 +26,12 @@ interface ApiAPI {
       one_hours: KitchenOrderType[];
     }>
   >;
+  order_list: () => Promise<
+    IResponses<{
+      new_order: KitchenOrderType[];
+      on_progress: KitchenOrderType[];
+    }>
+  >;
   print_struk: (
     data: KitchenOrderType,
     type_status: "ACCEPT" | "REJECT" | "DONE" | "PRINT",

@@ -15,6 +15,7 @@ import { prisma } from "./database.js";
 import Responses from "./lib/responses.js";
 import StrukBarWindow from "./module/struk_bar.js";
 import soundPlay from "sound-play";
+import { Prisma } from "@prisma/client";
 
 log.initialize();
 
@@ -286,6 +287,61 @@ ipcMain.handle(
   },
 );
 
+ipcMain.handle("order_list", async () => {
+  try {
+    const new_order = await prisma.kitchenData.findMany({
+      where: {
+        status_kitchen: "NO_PROCESSED",
+      },
+      include: {
+        order: {
+          include: {
+            menucafe: true,
+          },
+        },
+        item: true,
+      },
+      orderBy: {
+        created_at: "desc",
+      },
+    });
+
+    const on_progress = await prisma.kitchenData.findMany({
+      where: {
+        status_kitchen: "PROCESSED",
+      },
+      include: {
+        order: {
+          include: {
+            menucafe: true,
+          },
+        },
+        item: true,
+      },
+      orderBy: {
+        created_at: "desc",
+      },
+    });
+
+    return Responses({
+      code: 200,
+      data: {
+        new_order,
+        on_progress,
+      },
+      detail_message: "Berhasil mendapatkan data order",
+    });
+  } catch (err) {
+    if (err instanceof Error) {
+      return Responses({
+        code: 500,
+        detail_message: `Gagal mengupdate data: ${err.message}`,
+      });
+    }
+    return Responses({ code: 500, detail_message: "Gagal mengupdate data" });
+  }
+});
+
 ipcMain.handle("history_list", async () => {
   try {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -376,24 +432,65 @@ ipcMain.handle(
       if (type_status === "PRINT") {
         printStrukNow(data);
       } else {
+        // Calculate timer values (30 minutes from now for example)
+        const startTimer = new Date();
+        const endTimer = new Date(startTimer.getTime() + 30 * 60 * 1000); // 30 minutes
+
+        // Define base update data with proper typing
+        const baseUpdateData = {
+          status_kitchen:
+            type_status === "ACCEPT"
+              ? "PROCESSED"
+              : type_status === "REJECT"
+              ? "REJECT"
+              : "DONE",
+          status_timer:
+            type_status === "ACCEPT"
+              ? "STARTED"
+              : type_status === "DONE"
+              ? "DONE"
+              : type_status === "REJECT"
+              ? "REJECT"
+              : "NO_STARTED",
+        };
+
+        // Create specific update data based on status
+        let updateData: Prisma.KitchenDataUpdateInput;
+
+        if (type_status === "ACCEPT") {
+          updateData = {
+            ...baseUpdateData,
+            start_timer: startTimer,
+            end_timer: endTimer,
+          };
+        } else if (type_status === "DONE") {
+          updateData = {
+            ...baseUpdateData,
+            end_timer: new Date(), // Set end time to now
+          };
+        } else if (type_status === "REJECT") {
+          updateData = {
+            ...baseUpdateData,
+            end_timer: null, // Clear end timer for rejected orders
+          };
+        } else {
+          updateData = baseUpdateData;
+        }
+
         const update_kitchen = await prisma.kitchenData.update({
-          data: {
-            status_kitchen:
-              type_status === "ACCEPT"
-                ? "PROCESSED"
-                : type_status === "REJECT"
-                ? "REJECT"
-                : "DONE",
-          },
+          data: updateData,
           where: {
             id: data.id,
           },
         });
 
         if (update_kitchen) {
-          if (type_status !== "REJECT") {
+          if (type_status === "REJECT" || type_status === "DONE") {
             printStrukNow(data);
           }
+
+          // Send updated data to all clients via WebSocket if needed
+          // wsServer.clients.forEach(client => client.send(JSON.stringify(update_kitchen)));
         }
       }
     } catch (err) {

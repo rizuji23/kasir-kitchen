@@ -23,6 +23,11 @@ export default function NavbarCustom() {
                     Koneksi
                 </Link>
             </NavbarItem>
+            <NavbarItem isActive={pathname.pathname === "/order"}>
+                <Link className="text-foreground" to="/order">
+                    Pesanan Baru
+                </Link>
+            </NavbarItem>
             <NavbarItem isActive={pathname.pathname === "/history"}>
                 <Link aria-current="page" to="/history">
                     Histori Order

@@ -6,6 +6,7 @@ import HistoryPage from './app/History'
 import SettingsPage from './app/Settings'
 import StrukBarPage from './app/StrukBar'
 import { WebSocketProvider } from './components/context/WebsocketContext'
+import PesananPage from './app/Pesanan'
 
 function App() {
 
@@ -18,6 +19,8 @@ function App() {
           <Route path="/struk_bar" element={<StrukBarPage />}></Route>
           <Route path='/history' element={<HistoryPage />}></Route>
           <Route path='/settings' element={<SettingsPage />}></Route>
+
+          <Route path='/order' element={<PesananPage />}></Route>
         </Routes>
       </WebSocketProvider>
     </>

@@ -69,6 +69,9 @@ export interface KitchenOrderType {
   no_billiard: string;
   no_meja: string;
   status_kitchen: "NO_PROCESSED" | "PROCESSED" | "REJECT" | "DONE";
+  status_timer: "NO_STARTED" | "STARTED" | "REJECT" | "DONE";
+  start_timer: string;
+  end_timer: string;
 }
 
 export interface IPrinters {
