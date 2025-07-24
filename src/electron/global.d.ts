@@ -1,5 +1,5 @@
 import { IResponses } from "./lib/responses.ts";
-import { KitchenOrderType } from "./types/index.ts";
+import { KitchenOrderType, Settings } from "./types/index.ts";
 
 interface UpdateAPI {
   get_version: () => string;
@@ -19,6 +19,8 @@ interface ApiAPI {
     label_settings: string,
     content: string,
   ) => Promise<IResponses<unknown>>;
+  save_timer_food: (content: string) => Promise<IResponses<unknown>>;
+  save_timer_drink: (content: string) => Promise<IResponses<unknown>>;
   confirm: (title?: string) => Promise<boolean>;
   history_list: () => Promise<
     IResponses<{
@@ -37,6 +39,16 @@ interface ApiAPI {
     type_status: "ACCEPT" | "REJECT" | "DONE" | "PRINT",
   ) => void;
   open_url: (url: string) => Promise<void>;
+  get_timer: () => Promise<IResponses<{ data_timer: Settings[] }>>;
+  exportExcel: (params: {
+    type_export: "today" | "weekly" | "monthly" | "annual" | "custom";
+    start_date: string;
+    end_date: string;
+  }) => Promise<{
+    code: number;
+    detail_message: string;
+    error?: string;
+  }>;
 }
 
 declare global {

@@ -1,4 +1,3 @@
-import { Alert } from "@heroui/alert";
 import { Card, CardBody } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { useEffect, useState } from "react";
@@ -34,9 +33,6 @@ export default function AboutPage() {
         setCurrentVersion(curr);
     }, []);
 
-    const handleOpenExternal = async (url: string) => {
-        await window.api.open_url(url);
-    };
 
     // useEffect(() => {
     //     // Listen for update available
@@ -95,7 +91,7 @@ export default function AboutPage() {
                                 <Chip color="success" classNames={{ content: "font-bold" }}>v{currentVersion}</Chip>
                             </div>
                         </div>
-                        <Alert color="warning" title={"Informasi Pembaharuan"} description={
+                        {/* <Alert color="warning" title={"Informasi Pembaharuan"} description={
                             <>
                                 <div className="flex flex-col gap-3">
                                     <p>Update akan diupload pada url berikut ini: <button className="font-bold underline" onClick={() => handleOpenExternal("https://updatecozypool.rlstudio.my.id")}>updatecozypool.rlstudio.my.id</button></p>
@@ -108,7 +104,7 @@ export default function AboutPage() {
                                     </div>
                                 </div>
                             </>
-                        } />
+                        } /> */}
                         {/* {isUpdateAvailable && (
                             <>
                                 <Alert color="secondary" title="Pembaharuan" description={versionInfo} />

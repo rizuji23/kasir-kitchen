@@ -30,4 +30,14 @@ contextBridge.exposeInMainWorld("api", {
   print_struk: (data: unknown, type_status: string) =>
     ipcRenderer.invoke("print_struk", data, type_status),
   open_url: (url: string) => ipcRenderer.invoke("open_url", url),
+  save_timer_food: (content: string) =>
+    ipcRenderer.invoke("save_timer_food", content),
+  save_timer_drink: (content: string) =>
+    ipcRenderer.invoke("save_timer_drink", content),
+  get_timer: () => ipcRenderer.invoke("get_timer"),
+  exportExcel: (params: {
+    type_export: "today" | "weekly" | "monthly" | "annual" | "custom";
+    start_date: string;
+    end_date: string;
+  }) => ipcRenderer.invoke("export_excel", params),
 });

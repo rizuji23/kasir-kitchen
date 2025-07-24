@@ -72,6 +72,7 @@ export interface KitchenOrderType {
   status_timer: "NO_STARTED" | "STARTED" | "REJECT" | "DONE";
   start_timer: string;
   end_timer: string;
+  ip: string;
 }
 
 export interface IPrinters {

@@ -28,3 +28,38 @@ export function convertRupiah(integer: string | null): string {
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+export function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(amount);
+}
+
+export function formatDateTime(dateString: string) {
+  return new Date(dateString).toLocaleString("id-ID", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function getStatusBadge(status: string) {
+  const statusConfig = {
+    NO_PROCESSED: { label: "Belum Diproses", variant: "secondary" as const },
+    PROCESSING: { label: "Sedang Diproses", variant: "default" as const },
+    COMPLETED: { label: "Selesai", variant: "default" as const },
+    PAID: { label: "Lunas", variant: "default" as const },
+    NO_STARTED: { label: "Belum Dimulai", variant: "secondary" as const },
+  };
+
+  return (
+    statusConfig[status as keyof typeof statusConfig] || {
+      label: status,
+      variant: "secondary" as const,
+    }
+  );
+}

@@ -16,6 +16,7 @@ import Responses from "./lib/responses.js";
 import StrukBarWindow from "./module/struk_bar.js";
 import soundPlay from "sound-play";
 import { Prisma } from "@prisma/client";
+import { generateExcelReportKitchen } from "./module/generate-report.js";
 
 log.initialize();
 
@@ -287,6 +288,127 @@ ipcMain.handle(
   },
 );
 
+ipcMain.handle("save_timer_food", async (_, content: string) => {
+  try {
+    const check_id = await prisma.settings.findFirst({
+      where: {
+        id_settings: "TIMER_FOOD",
+      },
+    });
+
+    let res;
+
+    if (check_id) {
+      res = await prisma.settings.update({
+        where: { id_settings: check_id.id_settings },
+        data: {
+          content: content,
+        },
+      });
+    } else {
+      res = await prisma.settings.create({
+        data: {
+          id_settings: "TIMER_FOOD",
+          label_settings: "Timer Food",
+          content: content,
+          url: "",
+        },
+      });
+    }
+
+    return Responses({
+      code: 200,
+      data: res,
+      detail_message: "Timer berhasil disimpan atau diperbarui",
+    });
+  } catch (err) {
+    if (err instanceof Error) {
+      return Responses({
+        code: 500,
+        detail_message: `Gagal mengupdate data: ${err.message}`,
+      });
+    }
+    return Responses({ code: 500, detail_message: "Gagal mengupdate data" });
+  }
+});
+
+ipcMain.handle("save_timer_drink", async (_, content: string) => {
+  try {
+    const check_id = await prisma.settings.findFirst({
+      where: {
+        id_settings: "TIMER_DRINK",
+      },
+    });
+
+    let res;
+
+    if (check_id) {
+      res = await prisma.settings.update({
+        where: { id_settings: check_id.id_settings },
+        data: {
+          content: content,
+        },
+      });
+    } else {
+      res = await prisma.settings.create({
+        data: {
+          id_settings: "TIMER_DRINK",
+          label_settings: "Timer Drink",
+          content: content,
+          url: "",
+        },
+      });
+    }
+
+    return Responses({
+      code: 200,
+      data: res,
+      detail_message: "Timer berhasil disimpan atau diperbarui",
+    });
+  } catch (err) {
+    if (err instanceof Error) {
+      return Responses({
+        code: 500,
+        detail_message: `Gagal mengupdate data: ${err.message}`,
+      });
+    }
+    return Responses({ code: 500, detail_message: "Gagal mengupdate data" });
+  }
+});
+
+ipcMain.handle("get_timer", async () => {
+  try {
+    const data_timer = await prisma.settings.findMany({
+      where: {
+        OR: [{ id_settings: "TIMER_DRINK" }, { id_settings: "TIMER_FOOD" }],
+      },
+    });
+
+    if (data_timer) {
+      return Responses({
+        code: 200,
+        data: {
+          data_timer,
+        },
+        detail_message: "Berhasil mendapatkan data order",
+      });
+    } else {
+      return Responses({
+        code: 404,
+        detail_message: `Data kosong`,
+      });
+    }
+  } catch (err) {
+    if (err instanceof Error) {
+      return Responses({
+        code: 500,
+        detail_message: `Gagal mengambil data: ${err.message}`,
+      });
+    }
+    return Responses({ code: 500, detail_message: "Gagal mengambil data" });
+  }
+});
+
 ipcMain.handle("order_list", async () => {
   try {
     const new_order = await prisma.kitchenData.findMany({
@@ -346,6 +468,9 @@ ipcMain.handle("history_list", async () => {
   try {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const all = await prisma.kitchenData.findMany({
+      where: {
+        status_kitchen: "DONE",
+      },
       include: {
         order: {
           include: {
@@ -364,6 +489,7 @@ ipcMain.handle("history_list", async () => {
         created_at: {
           gte: oneHourAgo,
         },
+        status_kitchen: "DONE",
       },
       include: {
         order: {
@@ -433,8 +559,52 @@ ipcMain.handle(
         printStrukNow(data);
       } else {
         // Calculate timer values (30 minutes from now for example)
+        const data_timer = await prisma.settings.findMany({
+          where: {
+            OR: [{ id_settings: "TIMER_DRINK" }, { id_settings: "TIMER_FOOD" }],
+          },
+        });
+
+        if (!data_timer || data_timer.length === 0) {
+          return Responses({
+            code: 404,
+            detail_message: `Data Timer tidak ditemukan, silahkan isi terlebih dahulu di menu Pengaturan`,
+          });
+        }
+
+        // Extract timer values from settings
+        const timerDrink = data_timer.find(
+          (item) => item.id_settings === "TIMER_DRINK",
+        );
+        const timerFood = data_timer.find(
+          (item) => item.id_settings === "TIMER_FOOD",
+        );
+
+        // Filter orders
+        const makanan = data.order.filter(
+          (item) => item.menucafe.category_name === "Makanan",
+        );
+        const minuman = data.order.filter(
+          (item) => item.menucafe.category_name === "Minuman",
+        );
+
+        // Calculate combined timer
         const startTimer = new Date();
-        const endTimer = new Date(startTimer.getTime() + 30 * 60 * 1000); // 30 minutes
+        let durationMinutes = 0;
+
+        // Add food duration if there are food items
+        if (makanan.length > 0 && timerFood) {
+          durationMinutes += parseInt(timerFood.content || "0");
+        }
+
+        // Add drink duration if there are drink items
+        if (minuman.length > 0 && timerDrink) {
+          durationMinutes += parseInt(timerDrink.content || "0");
+        }
+
+        const endTimer = new Date(
+          startTimer.getTime() + durationMinutes * 60 * 1000,
+        );
 
         // Define base update data with proper typing
         const baseUpdateData = {
@@ -485,7 +655,7 @@ ipcMain.handle(
         });
 
         if (update_kitchen) {
-          if (type_status === "REJECT" || type_status === "DONE") {
+          if (type_status !== "REJECT" && type_status !== "DONE") {
             printStrukNow(data);
           }
 
@@ -523,4 +693,42 @@ ipcMain.handle("open_url", async (_, url: string) => {
 
 ipcMain.handle("get_version", () => {
   return app.getVersion();
+});
+
+interface ExportExcelParams {
+  type_export: "today" | "weekly" | "monthly" | "annual" | "custom";
+  start_date: string;
+  end_date: string;
+}
+
+ipcMain.handle("export_excel", async (event, params: ExportExcelParams) => {
+  try {
+    const { type_export, start_date, end_date } = params;
+
+    console.log("params", params);
+
+    const result = await generateExcelReportKitchen(
+      type_export,
+      start_date,
+      end_date,
+    );
+
+    if (result.success) {
+      return Responses({
+        code: 201,
+        detail_message: "Export berhasil dilakukan",
+      });
+    } else {
+      return Responses({
+        code: 404,
+        detail_message: `Data kosong`,
+      });
+    }
+  } catch (error) {
+    console.error("Export Excel Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error occurred",
+    };
+  }
 });
