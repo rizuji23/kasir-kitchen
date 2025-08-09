@@ -25,7 +25,7 @@ export function LoadingComponent() {
     </div>
 }
 
-export function TableOrder({ data, api, setOpen }: { data: KitchenOrderType[], api: () => Promise<void>, setOpen: React.Dispatch<SetStateAction<{ open: boolean, row: KitchenOrderType | null }>> }) {
+export function TableOrder({ data, api, setOpen, loading = false }: { data: KitchenOrderType[], loading?: boolean, api: () => Promise<void>, setOpen: React.Dispatch<SetStateAction<{ open: boolean, row: KitchenOrderType | null }>> }) {
     const print_struk = async (data_kitchen: KitchenOrderType, type_status: "ACCEPT" | "REJECT" | "DONE" | "PRINT") => {
         try {
             await window.api.print_struk(data_kitchen, type_status);
@@ -43,7 +43,7 @@ export function TableOrder({ data, api, setOpen }: { data: KitchenOrderType[], a
         },
         {
             name: "Nama Pelanggan",
-            selector: row => row.order[0].name,
+            selector: row => row.order[0]?.name,
         },
         {
             name: "Nomor Meja",
@@ -56,6 +56,11 @@ export function TableOrder({ data, api, setOpen }: { data: KitchenOrderType[], a
             cell: row => row.order_type === "TABLE" ? <Chip size="sm" color="success">{row.order_type}</Chip> : <Chip size="sm" color="primary">{row.order_type}</Chip>
         },
         {
+            name: "Kasir",
+            selector: row => row.name_cashier,
+            cell: row => row.name_cashier
+        },
+        {
             name: "Keterangan",
             selector: row => row.order[0]?.keterangan || "-",
             cell: row => row.order[0]?.keterangan || "-"
@@ -63,7 +68,7 @@ export function TableOrder({ data, api, setOpen }: { data: KitchenOrderType[], a
         {
             name: "Status",
             selector: row => row.status_kitchen || "-",
-            cell: row => row.status_kitchen || "-"
+            cell: row => <Chip size="sm">{row.status_kitchen || "-"}</Chip>
         },
         {
             name: "Tanggal",
@@ -86,7 +91,7 @@ export function TableOrder({ data, api, setOpen }: { data: KitchenOrderType[], a
 
     return (
         <>
-            <DataTable columns={columns} pagination data={data} noDataComponent={<h3 className="font-bold text-md p-6">Data Kosong</h3>} progressComponent={<LoadingComponent />} />
+            <DataTable columns={columns} pagination progressPending={loading} data={data} noDataComponent={<h3 className="font-bold text-md p-6">Data Kosong</h3>} progressComponent={<LoadingComponent />} />
         </>
     )
 }
@@ -127,7 +132,10 @@ export default function HistoryPage() {
         }
     }
 
+    const [loading, setLoading] = useState<boolean>(true)
+
     const get_all = async () => {
+        setLoading(true)
         try {
             const res = await window.api.history_list();
 
@@ -137,6 +145,8 @@ export default function HistoryPage() {
             }
         } catch (err) {
             toast.error(`Terjadi kesalahan: ${err}`);
+        } finally {
+            setLoading(false)
         }
     }
 
@@ -172,7 +182,7 @@ export default function HistoryPage() {
                     <Card>
                         <CardHeader className="!block">
                             <div className="flex justify-between">
-                                <h3 className="font-bold self-center">History Order Semua</h3>
+                                <h3 className="font-bold self-center">History Order</h3>
                                 <div className="flex gap-3">
                                     <Button className="w-full" color="secondary" onPress={onOpen}>Export Data</Button>
                                 </div>
@@ -184,7 +194,7 @@ export default function HistoryPage() {
                                 <Input className="max-w-[300px]" onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Cari ID Order atau Nama Pelanggan...." />
                             </div>
-                            <TableOrder data={filteredData} setOpen={setOpen} api={get_all} />
+                            <TableOrder data={filteredData} setOpen={setOpen} api={get_all} loading={loading} />
                         </CardBody>
                     </Card>
                 </div>
@@ -240,7 +250,7 @@ export default function HistoryPage() {
             <Modal size="3xl" isOpen={open.open} onOpenChange={(e) => setOpen({
                 open: e,
                 row: null
-            })}>
+            })} scrollBehavior="inside">
                 <ModalContent>
                     {(onClose) => (
                         <>

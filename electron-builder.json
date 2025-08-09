@@ -1,6 +1,6 @@
 {
     "appId": "com.rlstudio.kitchen-billing",
-    "productName": "Kitchen Billing Billiard",
+    "productName": "Kitchen Cozypool",
     "files": [
         "dist-electron/**",
         "dist-react/**",
@@ -34,7 +34,7 @@
         "publisherName": "RL Studio",
         "icon": "icon-desktop@512.png",
         "signtoolOptions": {
-            "publisherName": "Kitchen Billing Billiard"
+            "publisherName": "Kitchen Cozypool"
         }
     },
     "nsis": {

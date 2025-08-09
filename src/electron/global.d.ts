@@ -49,6 +49,31 @@ interface ApiAPI {
     detail_message: string;
     error?: string;
   }>;
+  best_seller: (params: {
+    type_export: "today" | "weekly" | "monthly" | "annual" | "custom";
+    start_date: string;
+    end_date: string;
+    sort: "most" | "least";
+  }) => Promise<{
+    makanan: {
+      name_menu: string;
+      sum: number;
+    }[];
+    minuman: {
+      name_menu: string;
+      sum: number;
+    }[];
+  }>;
+  best_seller_excel: (params: {
+    type_export: "today" | "weekly" | "monthly" | "annual" | "custom";
+    start_date: string;
+    end_date: string;
+    sort: "most" | "least";
+  }) => Promise<{
+    success: boolean;
+    filePath: string;
+    message?: string;
+  }>;
 }
 
 declare global {

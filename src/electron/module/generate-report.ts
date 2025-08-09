@@ -2,13 +2,14 @@ import { prisma } from "../database.js";
 import ExcelJS from "exceljs";
 import { dialog, SaveDialogOptions } from "electron";
 import { Prisma } from "@prisma/client";
-import { promises as fs } from "fs"; // Modern filesystem import
+import { promises as fs } from "fs";
 
 interface WorksheetRowData {
-  no?: number;
+  no: number;
   order_id: string;
   qty: number;
   menu_name: string;
+  category: string; // New column
   price: number;
   subtotal: number;
   order_type: string;
@@ -19,10 +20,11 @@ interface WorksheetRowData {
   notes: string;
 }
 
-interface SummaryRowData {
-  menu_name: string;
-  qty: number | { formula: string };
-  subtotal: number | { formula: string };
+interface BestSellerItem {
+  name: string;
+  category: string;
+  totalQty: number;
+  totalRevenue: number;
 }
 
 export async function generateExcelReportKitchen(
@@ -33,9 +35,10 @@ export async function generateExcelReportKitchen(
   try {
     const workbook = new ExcelJS.Workbook();
 
-    // Create worksheets for both categories
+    // Create worksheets
     const makananWorksheet = workbook.addWorksheet("Makanan");
     const minumanWorksheet = workbook.addWorksheet("Minuman");
+    const bestSellerWorksheet = workbook.addWorksheet("Best Seller");
 
     // Set date filter
     let dateFilter: Prisma.KitchenDataWhereInput = {};
@@ -90,23 +93,13 @@ export async function generateExcelReportKitchen(
         break;
 
       case "custom": {
-        console.log(`Original start_date: ${start_date}`);
-        console.log(`Original end_date: ${end_date}`);
-
-        // Parse dates and validate
         const startDate = new Date(start_date);
         const endDate = new Date(end_date);
 
-        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-          throw new Error("Invalid date format provided");
-        }
+        if (isNaN(startDate.getTime())) throw new Error("Invalid start date");
+        if (isNaN(endDate.getTime())) throw new Error("Invalid end date");
 
-        // Adjust end date to cover entire day
         endDate.setHours(23, 59, 59, 999);
-
-        console.log(`Adjusted start date: ${startDate.toISOString()}`);
-        console.log(`Adjusted end date: ${endDate.toISOString()}`);
-
         dateFilter = {
           created_at: {
             gte: startDate,
@@ -139,17 +132,18 @@ export async function generateExcelReportKitchen(
     if (kitchenData.length === 0) {
       return {
         success: false,
-        detail_message: "Tidak ada data kitchen untuk periode yang dipilih",
+        detail_message: "No kitchen data for selected period",
         errorCode: "NO_DATA",
       };
     }
 
-    // Configure columns for both worksheets (same structure)
+    // Configure columns for worksheets
     const worksheetColumns = [
       { header: "No", key: "no", width: 5 },
       { header: "Order ID", key: "order_id", width: 15 },
       { header: "Qty", key: "qty", width: 10 },
       { header: "Menu Name", key: "menu_name", width: 30 },
+      { header: "Category", key: "category", width: 15 }, // New column
       { header: "Price", key: "price", width: 15 },
       { header: "Subtotal", key: "subtotal", width: 15 },
       { header: "Order Type", key: "order_type", width: 15 },
@@ -165,31 +159,33 @@ export async function generateExcelReportKitchen(
 
     // Style function for header row
     const styleHeader = (worksheet: ExcelJS.Worksheet) => {
-      worksheet.getRow(1).eachCell((cell) => {
-        cell.font = { bold: true };
+      const headerRow = worksheet.getRow(1);
+      headerRow.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
         cell.fill = {
           type: "pattern",
           pattern: "solid",
-          fgColor: { argb: "FFD3D3D3" },
+          fgColor: { argb: "FF4F81BD" },
         };
         cell.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
+          top: { style: "thin", color: { argb: "FF000000" } },
+          left: { style: "thin", color: { argb: "FF000000" } },
+          bottom: { style: "thin", color: { argb: "FF000000" } },
+          right: { style: "thin", color: { argb: "FF000000" } },
         };
         cell.alignment = { vertical: "middle", horizontal: "center" };
       });
     };
 
-    // Initialize counters for both worksheets
+    // Initialize counters
     let makananRowNumber = 1;
     let minumanRowNumber = 1;
+    const salesMap = new Map<string, BestSellerItem>();
 
     // Helper function to add rows with proper styling
     const addRowWithStyle = (
       worksheet: ExcelJS.Worksheet,
-      data: WorksheetRowData | SummaryRowData,
+      data: WorksheetRowData,
       rowNumber: number,
     ) => {
       const row = worksheet.addRow(data);
@@ -197,10 +193,10 @@ export async function generateExcelReportKitchen(
       // Style the row
       row.eachCell((cell) => {
         cell.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
+          top: { style: "thin", color: { argb: "FFD3D3D3" } },
+          left: { style: "thin", color: { argb: "FFD3D3D3" } },
+          bottom: { style: "thin", color: { argb: "FFD3D3D3" } },
+          right: { style: "thin", color: { argb: "FFD3D3D3" } },
         };
         cell.alignment = { vertical: "middle", horizontal: "left" };
       });
@@ -220,7 +216,6 @@ export async function generateExcelReportKitchen(
 
     // Process each kitchen order
     kitchenData.forEach((kitchen) => {
-      // Determine location information
       const location =
         kitchen.no_meja !== "-"
           ? `Meja ${kitchen.no_meja}`
@@ -228,13 +223,14 @@ export async function generateExcelReportKitchen(
           ? `Billiard ${kitchen.no_billiard}`
           : "Takeaway";
 
-      // Process OrderCafe items (from MenuCafe)
+      // Process OrderCafe items
       kitchen.order.forEach((order) => {
         const rowData = {
-          no: 0, // Will be set based on category
+          no: 0,
           order_id: order.id_order_cafe,
           qty: order.qty,
           menu_name: order.menucafe.name,
+          category: order.menucafe.category_name, // New column data
           price: order.menucafe.price,
           subtotal: order.subtotal,
           order_type: kitchen.order_type,
@@ -245,108 +241,147 @@ export async function generateExcelReportKitchen(
           notes: order.keterangan || "-",
         };
 
-        // Directly use the category from MenuCafe
+        // Track sales for best sellers
+        const key = `${order.menucafe.name}|${order.menucafe.category_name}`;
+        const existing = salesMap.get(key);
+
+        if (existing) {
+          existing.totalQty += order.qty;
+          existing.totalRevenue += order.subtotal;
+        } else {
+          salesMap.set(key, {
+            name: order.menucafe.name,
+            category: order.menucafe.category_name,
+            totalQty: order.qty,
+            totalRevenue: order.subtotal,
+          });
+        }
+
+        // Add to appropriate worksheet
         if (order.menucafe.category_name === "Makanan") {
           makananRowNumber++;
           addRowWithStyle(
             makananWorksheet,
-            {
-              ...rowData,
-              no: makananRowNumber - 1,
-            },
+            { ...rowData, no: makananRowNumber - 1 },
             makananRowNumber,
           );
         } else {
           minumanRowNumber++;
           addRowWithStyle(
             minumanWorksheet,
-            {
-              ...rowData,
-              no: minumanRowNumber - 1,
-            },
+            { ...rowData, no: minumanRowNumber - 1 },
             minumanRowNumber,
           );
         }
       });
 
       // Process ItemOrder items (custom items)
-      // Since ItemOrder doesn't have category, we'll treat them all as "Makanan"
-      // or you might want to exclude them if they don't fit either category
       kitchen.item.forEach((item) => {
-        const rowData = {
-          no: 0,
-          order_id: item.id_order_cafe_item,
-          qty: item.qty,
-          menu_name: item.name_menu,
-          price: 0, // ItemOrder doesn't have price in model
-          subtotal: 0, // ItemOrder doesn't have subtotal in model
-          order_type: kitchen.order_type,
-          location: location,
-          cashier: kitchen.name_cashier,
-          status: kitchen.status_kitchen,
-          order_date: item.created_at,
-          notes: "-",
-        };
-
-        // Default all ItemOrder to Makanan (or you can exclude them)
         makananRowNumber++;
         addRowWithStyle(
           makananWorksheet,
           {
-            ...rowData,
             no: makananRowNumber - 1,
+            order_id: item.id_order_cafe_item,
+            qty: item.qty,
+            menu_name: item.name_menu,
+            category: "Makanan", // Default category for custom items
+            price: 0,
+            subtotal: 0,
+            order_type: kitchen.order_type,
+            location: location,
+            cashier: kitchen.name_cashier,
+            status: kitchen.status_kitchen,
+            order_date: item.created_at,
+            notes: "-",
           },
           makananRowNumber,
         );
       });
     });
 
-    // Add summary rows with totals
+    // ===== Best Seller Worksheet =====
+    bestSellerWorksheet.columns = [
+      { header: "Rank", key: "rank", width: 8 },
+      { header: "Menu Name", key: "name", width: 30 },
+      { header: "Category", key: "category", width: 15 },
+      { header: "Total Sold", key: "totalQty", width: 12 },
+      { header: "Total Revenue", key: "totalRevenue", width: 15 },
+      { header: "Avg Price", key: "avgPrice", width: 15 },
+    ];
+
+    // Sort and get top 20 best sellers
+    const bestSellers = Array.from(salesMap.values())
+      .sort((a, b) => b.totalQty - a.totalQty)
+      .slice(0, 20);
+
+    // Add data to best seller worksheet
+    bestSellers.forEach((item, index) => {
+      bestSellerWorksheet.addRow({
+        rank: index + 1,
+        name: item.name,
+        category: item.category,
+        totalQty: item.totalQty,
+        totalRevenue: item.totalRevenue,
+        avgPrice: item.totalRevenue / item.totalQty,
+      });
+    });
+
+    // Style best seller worksheet
+    styleHeader(bestSellerWorksheet);
+
+    // Format numeric cells in best seller worksheet
+    bestSellerWorksheet.eachRow((row, rowNumber) => {
+      if (rowNumber > 1) {
+        row.getCell("totalQty").numFmt = "#,##0";
+        row.getCell("totalRevenue").numFmt = '"Rp"#,##0.00';
+        row.getCell("avgPrice").numFmt = '"Rp"#,##0.00"';
+      }
+    });
+
+    // Add summary sections to food and drink worksheets
     const addSummary = (
       worksheet: ExcelJS.Worksheet,
       rowNumber: number,
-      category: string,
+      title: string,
     ) => {
       if (rowNumber > 1) {
-        // Add empty row
-        worksheet.addRow([]);
+        worksheet.addRow([]); // Empty row
 
-        // Add total row
-        const totalRow = worksheet.addRow({
-          menu_name: `TOTAL ${category.toUpperCase()}`,
+        const summaryRow = worksheet.addRow({
+          menu_name: `TOTAL ${title}`,
+          category: "", // Empty for summary row
           qty: { formula: `SUM(C2:C${rowNumber})` },
-          subtotal: { formula: `SUM(E2:E${rowNumber})` }, // Changed to column E (subtotal)
+          subtotal: { formula: `SUM(G2:G${rowNumber})` }, // Changed from F to G
         });
 
-        // Style the total row
-        totalRow.eachCell((cell) => {
+        summaryRow.eachCell((cell) => {
           cell.font = { bold: true };
           cell.fill = {
             type: "pattern",
             pattern: "solid",
-            fgColor: { argb: "FFF0F0F0" },
+            fgColor: { argb: "FFF2F2F2" },
           };
           cell.border = {
-            top: { style: "thin" },
-            left: { style: "thin" },
-            bottom: { style: "thin" },
-            right: { style: "thin" },
+            top: { style: "thin", color: { argb: "FF000000" } },
+            left: { style: "thin", color: { argb: "FF000000" } },
+            bottom: { style: "thin", color: { argb: "FF000000" } },
+            right: { style: "thin", color: { argb: "FF000000" } },
           };
         });
 
-        // Format numeric cells
-        totalRow.getCell("subtotal").numFmt = "#,##0";
+        summaryRow.getCell("subtotal").numFmt = '"Rp"#,##0.00';
       }
     };
 
-    addSummary(makananWorksheet, makananRowNumber, "makanan");
-    addSummary(minumanWorksheet, minumanRowNumber, "minuman");
+    addSummary(makananWorksheet, makananRowNumber, "MAKANAN");
+    addSummary(minumanWorksheet, minumanRowNumber, "MINUMAN");
 
-    // Apply styles to both worksheets
+    // Apply styles to all worksheets
     styleHeader(makananWorksheet);
     styleHeader(minumanWorksheet);
 
-    // Format date cells in both worksheets
+    // Format date cells
     [makananWorksheet, minumanWorksheet].forEach((ws) => {
       ws.eachRow((row, rowNumber) => {
         if (rowNumber > 1) {
@@ -370,7 +405,7 @@ export async function generateExcelReportKitchen(
     }
     defaultFilename += ".xlsx";
 
-    // Show save dialog with proper typing
+    // Show save dialog
     const saveOptions: SaveDialogOptions = {
       title: "Save Excel Report",
       defaultPath: defaultFilename,
@@ -392,8 +427,6 @@ export async function generateExcelReportKitchen(
       return { success: false, error: "Save dialog canceled" };
     }
 
-    // Save the file using modern fs promises
-    console.log("filePath", filePath);
     await fs.writeFile(filePathData.filePath, bufferData);
 
     return {
@@ -402,7 +435,7 @@ export async function generateExcelReportKitchen(
       message: `Report saved successfully to ${filePath}`,
     };
   } catch (err) {
-    console.error("Error generating Excel report:", err);
+    console.error("Error generating report:", err);
     return {
       success: false,
       error: err instanceof Error ? err.message : "Unknown error",

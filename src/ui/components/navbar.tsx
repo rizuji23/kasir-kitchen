@@ -14,8 +14,7 @@ export default function NavbarCustom() {
 
     return <Navbar>
         <NavbarBrand>
-
-            <p className="font-bold text-inherit">Dapur System</p>
+            <p className="font-bold text-inherit">Cozypool Kitchen System</p>
         </NavbarBrand>
         <NavbarContent className="hidden sm:flex gap-4" justify="center">
             <NavbarItem isActive={pathname.pathname === "/"}>
@@ -31,6 +30,11 @@ export default function NavbarCustom() {
             <NavbarItem isActive={pathname.pathname === "/history"}>
                 <Link aria-current="page" to="/history">
                     Histori Order
+                </Link>
+            </NavbarItem>
+            <NavbarItem isActive={pathname.pathname === "/analisis"}>
+                <Link aria-current="page" to="/analisis">
+                    Analisis
                 </Link>
             </NavbarItem>
             <NavbarItem isActive={pathname.pathname === "/settings"}>

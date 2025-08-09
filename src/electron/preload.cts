@@ -40,4 +40,16 @@ contextBridge.exposeInMainWorld("api", {
     start_date: string;
     end_date: string;
   }) => ipcRenderer.invoke("export_excel", params),
+  best_seller: (params: {
+    type_export: "today" | "weekly" | "monthly" | "annual" | "custom";
+    start_date: string;
+    end_date: string;
+    sort: "most" | "least";
+  }) => ipcRenderer.invoke("best_seller", params),
+  best_seller_excel: (params: {
+    type_export: "today" | "weekly" | "monthly" | "annual" | "custom";
+    start_date: string;
+    end_date: string;
+    sort: "most" | "least";
+  }) => ipcRenderer.invoke("best_seller_excel", params),
 });

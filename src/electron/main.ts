@@ -1,4 +1,11 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  SaveDialogOptions,
+  shell,
+} from "electron";
 import {
   getNotificationSound,
   getPreloadPath,
@@ -17,6 +24,8 @@ import StrukBarWindow from "./module/struk_bar.js";
 import soundPlay from "sound-play";
 import { Prisma } from "@prisma/client";
 import { generateExcelReportKitchen } from "./module/generate-report.js";
+import ExcelJS from "exceljs";
+import { promises as fs } from "fs";
 
 log.initialize();
 
@@ -51,6 +60,7 @@ if (!gotTheLock) {
         nodeIntegration: false,
       },
       focusable: true,
+      fullscreen: true,
     });
 
     if (isDev()) {
@@ -701,7 +711,7 @@ interface ExportExcelParams {
   end_date: string;
 }
 
-ipcMain.handle("export_excel", async (event, params: ExportExcelParams) => {
+ipcMain.handle("export_excel", async (_, params: ExportExcelParams) => {
   try {
     const { type_export, start_date, end_date } = params;
 
@@ -731,4 +741,378 @@ ipcMain.handle("export_excel", async (event, params: ExportExcelParams) => {
       error: error instanceof Error ? error.message : "Unknown error occurred",
     };
   }
+});
+
+interface IBestSellerParams {
+  type_export:
+    | "today"
+    | "weekly"
+    | "monthly"
+    | "annual"
+    | "custom"
+    | "yesterday";
+  start_date: string;
+  end_date: string;
+  sort: "most" | "least";
+}
+
+ipcMain.handle("best_seller", async (_, params: IBestSellerParams) => {
+  const now = new Date();
+  let dateFilter = {};
+
+  switch (params.type_export) {
+    case "today":
+      dateFilter = {
+        created_at: {
+          gte: new Date(now.setHours(0, 0, 0, 0)),
+          lte: new Date(now.setHours(23, 59, 59, 999)),
+        },
+      };
+      break;
+
+    case "yesterday": {
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      dateFilter = {
+        created_at: {
+          gte: new Date(yesterday.setHours(0, 0, 0, 0)),
+          lte: new Date(yesterday.setHours(23, 59, 59, 999)),
+        },
+      };
+      break;
+    }
+
+    case "weekly": {
+      const firstDay = new Date(now.setDate(now.getDate() - now.getDay()));
+      const lastDay = new Date(now.setDate(now.getDate() - now.getDay() + 6));
+      dateFilter = {
+        created_at: {
+          gte: new Date(firstDay.setHours(0, 0, 0, 0)),
+          lte: new Date(lastDay.setHours(23, 59, 59, 999)),
+        },
+      };
+      break;
+    }
+
+    case "monthly":
+      dateFilter = {
+        created_at: {
+          gte: new Date(now.getFullYear(), now.getMonth(), 1),
+          lte: new Date(
+            now.getFullYear(),
+            now.getMonth() + 1,
+            0,
+            23,
+            59,
+            59,
+            999,
+          ),
+        },
+      };
+      break;
+
+    case "annual":
+      dateFilter = {
+        created_at: {
+          gte: new Date(now.getFullYear(), 0, 1),
+          lte: new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999),
+        },
+      };
+      break;
+
+    case "custom": {
+      const startDate = new Date(params.start_date);
+      const endDate = new Date(params.end_date);
+
+      if (isNaN(startDate.getTime())) throw new Error("Invalid start date");
+      if (isNaN(endDate.getTime())) throw new Error("Invalid end date");
+
+      endDate.setHours(23, 59, 59, 999);
+      dateFilter = {
+        created_at: {
+          gte: startDate,
+          lte: endDate,
+        },
+      };
+      break;
+    }
+
+    default:
+      dateFilter = {};
+  }
+
+  const results = await prisma.itemOrder.groupBy({
+    by: ["name_menu"],
+    where: {
+      ...dateFilter,
+      kitchenData: {
+        status_kitchen: "DONE", // Only count processed orders if needed
+      },
+    },
+    _sum: {
+      qty: true,
+    },
+    orderBy: {
+      _sum: {
+        qty: params.sort === "most" ? "desc" : "asc",
+      },
+    },
+  });
+
+  // Get menu items with their categories
+  const menuItems = await prisma.menuCafe.findMany({
+    where: {
+      name: {
+        in: results.map((item) => item.name_menu),
+      },
+    },
+    select: {
+      name: true,
+      category_name: true,
+    },
+  });
+
+  // Combine the data
+  const combinedResults = results.map((item) => {
+    const menuItem = menuItems.find((menu) => menu.name === item.name_menu);
+    return {
+      name_menu: item.name_menu,
+      category: menuItem?.category_name || "Unknown",
+      sum: item._sum.qty || 0,
+    };
+  });
+
+  // Separate by category
+  const makanan = combinedResults.filter((item) => item.category === "Makanan");
+  const minuman = combinedResults.filter((item) => item.category === "Minuman");
+
+  return {
+    makanan,
+    minuman,
+  };
+});
+
+interface BestSellerItem {
+  name_menu: string;
+  category: string;
+  sum: number;
+}
+
+ipcMain.handle("best_seller_excel", async (_, params: IBestSellerParams) => {
+  const now = new Date();
+  let dateFilter = {};
+
+  switch (params.type_export) {
+    case "today":
+      dateFilter = {
+        created_at: {
+          gte: new Date(now.setHours(0, 0, 0, 0)),
+          lte: new Date(now.setHours(23, 59, 59, 999)),
+        },
+      };
+      break;
+
+    case "yesterday": {
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      dateFilter = {
+        created_at: {
+          gte: new Date(yesterday.setHours(0, 0, 0, 0)),
+          lte: new Date(yesterday.setHours(23, 59, 59, 999)),
+        },
+      };
+      break;
+    }
+
+    case "weekly": {
+      const firstDay = new Date(now.setDate(now.getDate() - now.getDay()));
+      const lastDay = new Date(now.setDate(now.getDate() - now.getDay() + 6));
+      dateFilter = {
+        created_at: {
+          gte: new Date(firstDay.setHours(0, 0, 0, 0)),
+          lte: new Date(lastDay.setHours(23, 59, 59, 999)),
+        },
+      };
+      break;
+    }
+
+    case "monthly":
+      dateFilter = {
+        created_at: {
+          gte: new Date(now.getFullYear(), now.getMonth(), 1),
+          lte: new Date(
+            now.getFullYear(),
+            now.getMonth() + 1,
+            0,
+            23,
+            59,
+            59,
+            999,
+          ),
+        },
+      };
+      break;
+
+    case "annual":
+      dateFilter = {
+        created_at: {
+          gte: new Date(now.getFullYear(), 0, 1),
+          lte: new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999),
+        },
+      };
+      break;
+
+    case "custom": {
+      const startDate = new Date(params.start_date);
+      const endDate = new Date(params.end_date);
+
+      if (isNaN(startDate.getTime())) throw new Error("Invalid start date");
+      if (isNaN(endDate.getTime())) throw new Error("Invalid end date");
+
+      endDate.setHours(23, 59, 59, 999);
+      dateFilter = {
+        created_at: {
+          gte: startDate,
+          lte: endDate,
+        },
+      };
+      break;
+    }
+
+    default:
+      dateFilter = {};
+  }
+
+  const results = await prisma.itemOrder.groupBy({
+    by: ["name_menu"],
+    where: {
+      ...dateFilter,
+      kitchenData: {
+        status_kitchen: "DONE", // Only count processed orders if needed
+      },
+    },
+    _sum: {
+      qty: true,
+    },
+    orderBy: {
+      _sum: {
+        qty: params.sort === "most" ? "desc" : "asc",
+      },
+    },
+  });
+
+  // Get menu items with their categories
+  const menuItems = await prisma.menuCafe.findMany({
+    where: {
+      name: {
+        in: results.map((item) => item.name_menu),
+      },
+    },
+    select: {
+      name: true,
+      category_name: true,
+    },
+  });
+
+  // Combine the data
+  const combinedResults = results.map((item) => {
+    const menuItem = menuItems.find((menu) => menu.name === item.name_menu);
+    return {
+      name_menu: item.name_menu,
+      category: menuItem?.category_name || "Unknown",
+      sum: item._sum.qty || 0,
+    };
+  });
+
+  // Separate by category
+  const makanan = combinedResults.filter((item) => item.category === "Makanan");
+  const minuman = combinedResults.filter((item) => item.category === "Minuman");
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Your App Name";
+  workbook.created = new Date();
+
+  // Helper function to add a worksheet with data
+  const addSheet = (name: string, data: BestSellerItem[]) => {
+    const worksheet = workbook.addWorksheet(name);
+
+    // Add headers
+    worksheet.columns = [
+      { header: "No", key: "no", width: 5 },
+      { header: "Nama Menu", key: "name_menu", width: 30 },
+      { header: "Kategori", key: "category", width: 15 },
+      { header: "Jumlah Terjual", key: "sum", width: 15 },
+    ];
+
+    // Add data with row numbers
+    data.forEach((item: BestSellerItem, index: number) => {
+      worksheet.addRow({
+        no: index + 1,
+        name_menu: item.name_menu,
+        category: item.category,
+        sum: item.sum,
+      });
+    });
+
+    // Style the header row
+    worksheet.getRow(1).eachCell((cell: ExcelJS.Cell) => {
+      cell.font = { bold: true };
+      cell.alignment = { vertical: "middle", horizontal: "center" };
+    });
+
+    // Add totals row
+    const totalRow = worksheet.addRow({
+      name_menu: "TOTAL",
+      sum: { formula: `SUM(D2:D${data.length + 1})` },
+    });
+    totalRow.getCell("name_menu").font = { bold: true };
+    totalRow.getCell("sum").font = { bold: true };
+  };
+
+  // Add sheets for each category
+  if (makanan.length > 0) addSheet("Makanan", makanan);
+  if (minuman.length > 0) addSheet("Minuman", minuman);
+
+  const excelBuffer = await workbook.xlsx.writeBuffer();
+  const bufferData = Buffer.from(excelBuffer);
+
+  // Generate filename
+  let defaultFilename = `Laporan Menu Terjual`;
+  if (params.type_export === "custom") {
+    defaultFilename += ` ${params.start_date} - ${params.end_date}`;
+  } else {
+    defaultFilename += ` ${params.type_export} ${new Date()
+      .toISOString()
+      .slice(0, 10)}`;
+  }
+  defaultFilename += ".xlsx";
+
+  const saveOptions: SaveDialogOptions = {
+    title: "Save Excel Report",
+    defaultPath: defaultFilename,
+    filters: [
+      { name: "Excel Files", extensions: ["xlsx"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
+  };
+
+  const filePath = await dialog.showSaveDialog(saveOptions);
+  const filePathData: {
+    canceled: boolean;
+    filePath: string;
+  } = filePath as unknown as {
+    canceled: boolean;
+    filePath: string;
+  };
+  if (!filePath) {
+    return { success: false, error: "Save dialog canceled" };
+  }
+
+  await fs.writeFile(filePathData.filePath, bufferData);
+
+  return {
+    success: true,
+    filePath: filePath,
+    message: `Report saved successfully to ${filePath}`,
+  };
 });

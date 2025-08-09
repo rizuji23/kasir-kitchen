@@ -15,12 +15,18 @@ import TableMenu from "./TableMenu";
 
 
 export function TableOrder({ data, api, setOpen }: { data: KitchenOrderType[], api: () => Promise<void>, setOpen: React.Dispatch<SetStateAction<{ open: boolean, row: KitchenOrderType | null }>> }) {
+    const [loading, setLoading] = useState<boolean>(false);
     const print_struk = async (data_kitchen: KitchenOrderType, type_status: "ACCEPT" | "REJECT" | "DONE" | "PRINT") => {
-        try {
-            await window.api.print_struk(data_kitchen, type_status);
-            await api();
-        } catch (err) {
-            toast.error(`Terjadi Kesalahan: ${err}`);
+        if (confirm("Apakah anda yakin?")) {
+            setLoading(true);
+            try {
+                await window.api.print_struk(data_kitchen, type_status);
+                await api();
+            } catch (err) {
+                toast.error(`Terjadi Kesalahan: ${err}`);
+            } finally {
+                setLoading(false)
+            }
         }
     }
 
@@ -32,7 +38,7 @@ export function TableOrder({ data, api, setOpen }: { data: KitchenOrderType[], a
         },
         {
             name: "Nama Pelanggan",
-            selector: row => row.order[0].name,
+            selector: row => row.order[0]?.name || "-",
         },
         {
             name: "Nomor Meja",
@@ -43,6 +49,11 @@ export function TableOrder({ data, api, setOpen }: { data: KitchenOrderType[], a
             name: "Tipe Order",
             selector: row => row.order_type,
             cell: row => row.order_type === "TABLE" ? <Chip size="sm" color="success">{row.order_type}</Chip> : <Chip size="sm" color="primary">{row.order_type}</Chip>
+        },
+        {
+            name: "Kasir",
+            selector: row => row.name_cashier,
+            cell: row => row.name_cashier
         },
         {
             name: "Keterangan",
@@ -74,9 +85,9 @@ export function TableOrder({ data, api, setOpen }: { data: KitchenOrderType[], a
             cell: row => <div className="flex gap-3">
                 {
                     row.status_kitchen === "NO_PROCESSED" ? <>
-                        <Button size="sm" color="primary" onPress={() => print_struk(row, "ACCEPT")}>Terima</Button>
-                        <Button size="sm" color="danger" onPress={() => print_struk(row, "REJECT")}>Tolak</Button>
-                    </> : row.status_kitchen === "PROCESSED" ? <Button size="sm" color="secondary" onPress={() => print_struk(row, "DONE")}>Selesai</Button> : <Button size="sm" color="success" onPress={() => print_struk(row, "PRINT")}>Print</Button>
+                        <Button size="sm" color="primary" onPress={() => print_struk(row, "ACCEPT")} isLoading={loading}>Terima</Button>
+                        <Button size="sm" color="danger" onPress={() => print_struk(row, "REJECT")} isLoading={loading}>Tolak</Button>
+                    </> : row.status_kitchen === "PROCESSED" ? <Button size="sm" color="secondary" onPress={() => print_struk(row, "DONE")} isLoading={loading}>Selesai</Button> : <Button size="sm" color="success" onPress={() => print_struk(row, "PRINT")} isLoading={loading}>Print</Button>
                 }
 
             </div>
@@ -152,7 +163,7 @@ export default function PesananPage() {
             <Modal size="3xl" isOpen={open.open} onOpenChange={(e) => setOpen({
                 open: e,
                 row: null
-            })}>
+            })} scrollBehavior="inside">
                 <ModalContent>
                     {(onClose) => (
                         <>
